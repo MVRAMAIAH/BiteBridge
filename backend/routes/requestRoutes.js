@@ -1,0 +1,17 @@
+const express = require('express');
+const router = express.Router();
+const {
+  createRequest,
+  updateRequestStatus,
+  getRequests
+} = require('../controllers/requestController');
+const { protect } = require('../middleware/authMiddleware');
+
+router.route('/')
+  .post(protect, createRequest)
+  .get(protect, getRequests);
+
+router.route('/:id')
+  .put(protect, updateRequestStatus);
+
+module.exports = router;
