@@ -16,11 +16,10 @@ const Landing = () => {
     try {
       const result = await signInWithGoogle();
       const userObj = result.user;
+      const idToken = await userObj.getIdToken();
 
       const res = await login({
-        name: userObj.displayName || 'BiteBridge Peer',
-        email: userObj.email,
-        profileImage: userObj.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(userObj.email)}`,
+        firebaseToken: idToken,
         location: {
           type: 'Point',
           coordinates: [78.4867, 17.3850], // Hyderabad default

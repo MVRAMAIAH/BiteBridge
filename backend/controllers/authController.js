@@ -7,19 +7,29 @@ const generateToken = (id) => {
   });
 };
 
+const admin = require('firebase-admin');
+
 // @desc    Auth user / create user from Google profile
 // @route   POST /api/auth/google
 // @access  Public
 const googleLogin = async (req, res) => {
-  const { name, email, profileImage, location } = req.body;
+  const { firebaseToken, location } = req.body;
+
+  if (!firebaseToken) {
+    return res.status(400).json({ success: false, message: 'Firebase token is required' });
+  }
 
   try {
+    // Decrypt and securely verify the Firebase ID Token using Firebase Admin SDK
+    const decodedToken = await admin.auth().verifyIdToken(firebaseToken);
+    const { email, name, picture } = decodedToken;
+
     let user = await User.findOne({ email });
 
     if (user) {
       // Update existing user details if changed
       if (name) user.name = name;
-      if (profileImage) user.profileImage = profileImage;
+      if (picture) user.profileImage = picture;
       if (location) {
         user.location = {
           type: 'Point',
@@ -33,7 +43,7 @@ const googleLogin = async (req, res) => {
       user = await User.create({
         name,
         email,
-        profileImage: profileImage || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120',
+        profileImage: picture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120',
         location: {
           type: 'Point',
           coordinates: location?.coordinates || [0, 0],

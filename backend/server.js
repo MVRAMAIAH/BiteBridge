@@ -1,7 +1,14 @@
 const express = require('express');
 const http = require('http');
 const cors = require('cors');
+const admin = require('firebase-admin');
 require('dotenv').config();
+
+const serviceAccount = require('./config/firebaseServiceAccountKey.json');
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
 
 const connectDB = require('./config/db');
 const { initIO } = require('./services/socketService');
