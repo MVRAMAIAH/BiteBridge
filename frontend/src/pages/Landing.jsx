@@ -53,76 +53,19 @@ const Landing = () => {
         <p className="text-lg sm:text-xl text-slate-600 dark:text-slate-350 max-w-2xl mx-auto mb-8 font-medium leading-relaxed">
           {t('subWelcome')}
         </p>
-
         {/* Beautiful Dynamic Registration / Login Panel */}
-        <div className="glass-panel max-w-md mx-auto p-6 sm:p-8 rounded-3xl glow-card mb-12 border border-slate-100 dark:border-slate-850">
+        <div className="glass-panel max-w-sm mx-auto p-6 sm:p-8 rounded-3xl glow-card mb-12 border border-slate-100 dark:border-slate-850">
           <h2 className="font-extrabold text-xl mb-2 text-slate-800 dark:text-white">
-            Create Your Account
+            Welcome to BiteBridge
           </h2>
           <p className="text-xs text-slate-450 dark:text-slate-500 mb-6 font-medium">
-            Join the BiteBridge food sharing network instantly.
+            Connect with roommates and share homemade meals.
           </p>
-
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              const target = e.target;
-              const nameInput = target.elements.namedItem('fullname').value;
-              const emailInput = target.elements.namedItem('email').value;
-              await handleMockGoogleLogin(
-                emailInput,
-                nameInput,
-                `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(nameInput)}`
-              );
-            }}
-            className="flex flex-col gap-4 text-left"
-          >
-            <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5">
-                Full Name
-              </label>
-              <input
-                required
-                type="text"
-                name="fullname"
-                placeholder="e.g. Rahul Kumar"
-                className="w-full px-4 py-3 rounded-xl text-sm bg-slate-50 dark:bg-slate-900 border border-slate-205 dark:border-slate-800 focus:outline-none focus:border-spice-500 text-slate-700 dark:text-white font-medium"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5">
-                Email Address
-              </label>
-              <input
-                required
-                type="email"
-                name="email"
-                placeholder="e.g. rahul@bitebridge.com"
-                className="w-full px-4 py-3 rounded-xl text-sm bg-slate-50 dark:bg-slate-900 border border-slate-205 dark:border-slate-800 focus:outline-none focus:border-spice-500 text-slate-700 dark:text-white font-medium"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-spice-500 hover:bg-spice-600 disabled:opacity-50 text-white font-bold py-3 rounded-xl text-sm transition-colors shadow-md shadow-spice-500/10 flex items-center justify-center gap-1.5"
-            >
-              <span>{loading ? 'Entering Bridge...' : 'Sign In & Get Sharing'}</span>
-            </button>
-          </form>
-
-          {/* Simulated Google Button divider */}
-          <div className="flex items-center my-5">
-            <div className="flex-1 border-t border-slate-200 dark:border-slate-800" />
-            <span className="px-3 text-[10px] font-bold text-slate-400 uppercase">Or</span>
-            <div className="flex-1 border-t border-slate-200 dark:border-slate-800" />
-          </div>
 
           <button
             onClick={() => handleMockGoogleLogin('venket@bitebridge.com', 'Venket Ramaiah', 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120')}
             disabled={loading}
-            className="w-full bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-350 border border-slate-200 dark:border-slate-800 hover:border-spice-500 dark:hover:border-spice-500 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-sm"
+            className="w-full bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-350 border border-slate-200 dark:border-slate-800 hover:border-spice-500 dark:hover:border-spice-500 py-3.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-sm active:scale-95 cursor-pointer"
           >
             {/* Google G logo svg */}
             <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -131,10 +74,9 @@ const Landing = () => {
               <path fill="#FBBC05" d="M5.72 14.97c-.22-.67-.35-1.39-.35-2.12s.13-1.45.35-2.12v-2.5H1.68c-.76 1.52-1.18 3.22-1.18 5s.42 3.48 1.18 5l4.04-3.26z"/>
               <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.97 1.19 15.24 0 12 0 10.3 0 6.18 2.1 4.18 5.75L5.72 9c.88-2.66 3.36-4.63 6.28-4.63z"/>
             </svg>
-            <span>Instant One-Click Google Sign In</span>
+            <span>{loading ? 'Authenticating...' : 'Sign In with Google'}</span>
           </button>
         </div>
-
         {/* Feature Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
           <div className="glass-panel p-6 rounded-2xl glow-card text-center border border-slate-100 dark:border-slate-850">

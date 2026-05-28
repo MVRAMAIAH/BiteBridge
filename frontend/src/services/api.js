@@ -36,6 +36,11 @@ export const api = {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify(profileData)
+      }).then(handleResponse),
+
+    getNearbyUsers: ({ lat, lng, maxDistance = 1000 }) =>
+      fetch(`${API_URL}/auth/nearby-users?lat=${lat}&lng=${lng}&maxDistance=${maxDistance}`, {
+        headers: getHeaders()
       }).then(handleResponse)
   },
 
@@ -68,6 +73,18 @@ export const api = {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify({ status })
+      }).then(handleResponse),
+
+    rate: (foodPostId, rating, comment) =>
+      fetch(`${API_URL}/food/${foodPostId}/rate`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ rating, comment })
+      }).then(handleResponse),
+
+    getMyRating: (foodPostId) =>
+      fetch(`${API_URL}/food/${foodPostId}/my-rating`, {
+        headers: getHeaders()
       }).then(handleResponse)
   },
 

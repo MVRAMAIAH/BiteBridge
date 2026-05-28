@@ -35,6 +35,26 @@ const UserSchema = new mongoose.Schema({
     enum: ['en', 'te', 'hi', 'ta'],
     default: 'en'
   },
+  mobileNumber: {
+    type: String,
+    default: ''
+  },
+  address: {
+    type: String,
+    default: ''
+  },
+  averageRating: {
+    type: Number,
+    default: 0
+  },
+  totalRatings: {
+    type: Number,
+    default: 0
+  },
+  isProfileComplete: {
+    type: Boolean,
+    default: false
+  },
   roomId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Room',

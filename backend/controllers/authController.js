@@ -53,6 +53,11 @@ const googleLogin = async (req, res) => {
         profileImage: user.profileImage,
         location: user.location,
         languagePreference: user.languagePreference,
+        mobileNumber: user.mobileNumber,
+        address: user.address,
+        averageRating: user.averageRating,
+        totalRatings: user.totalRatings,
+        isProfileComplete: user.isProfileComplete,
         roomId: user.roomId
       }
     });
@@ -91,6 +96,8 @@ const updateUserProfile = async (req, res) => {
     if (user) {
       user.name = req.body.name || user.name;
       user.languagePreference = req.body.languagePreference || user.languagePreference;
+      user.mobileNumber = req.body.mobileNumber !== undefined ? req.body.mobileNumber : user.mobileNumber;
+      user.address = req.body.address !== undefined ? req.body.address : user.address;
 
       if (req.body.location) {
         user.location = {
@@ -98,6 +105,11 @@ const updateUserProfile = async (req, res) => {
           coordinates: req.body.location.coordinates || user.location.coordinates,
           cityName: req.body.location.cityName || user.location.cityName
         };
+      }
+
+      // Automatically evaluate profile completion
+      if (user.name && user.mobileNumber && user.address) {
+        user.isProfileComplete = true;
       }
 
       const updatedUser = await user.save();
@@ -110,6 +122,11 @@ const updateUserProfile = async (req, res) => {
           profileImage: updatedUser.profileImage,
           location: updatedUser.location,
           languagePreference: updatedUser.languagePreference,
+          mobileNumber: updatedUser.mobileNumber,
+          address: updatedUser.address,
+          averageRating: updatedUser.averageRating,
+          totalRatings: updatedUser.totalRatings,
+          isProfileComplete: updatedUser.isProfileComplete,
           roomId: updatedUser.roomId
         }
       });
@@ -122,8 +139,47 @@ const updateUserProfile = async (req, res) => {
   }
 };
 
+// @desc    Get nearby active users
+// @route   GET /api/auth/nearby-users
+// @access  Private
+const getNearbyUsers = async (req, res) => {
+  const lat = parseFloat(req.query.lat);
+  const lng = parseFloat(req.query.lng);
+  const maxDistance = parseInt(req.query.maxDistance) || 1000; // default 1km
+
+  if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
+    return res.status(400).json({ success: false, message: 'Please provide valid latitude and longitude coordinates' });
+  }
+
+  try {
+    const nearby = await User.find({
+      _id: { $ne: req.user.id },
+      'location.coordinates': { $ne: [0, 0] },
+      location: {
+        $near: {
+          $geometry: {
+            type: 'Point',
+            coordinates: [lng, lat]
+          },
+          $maxDistance: maxDistance
+        }
+      }
+    }).select('name email profileImage location averageRating');
+
+    res.json({
+      success: true,
+      count: nearby.length,
+      users: nearby
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 module.exports = {
   googleLogin,
   getUserProfile,
-  updateUserProfile
+  updateUserProfile,
+  getNearbyUsers
 };

@@ -7,6 +7,7 @@ const {
   updateFoodPost
 } = require('../controllers/foodPostController');
 const { protect } = require('../middleware/authMiddleware');
+const { rateFoodPost, getMyRatingForFoodPost } = require('../controllers/ratingController');
 
 router.route('/')
   .post(protect, createFoodPost)
@@ -15,5 +16,11 @@ router.route('/')
 router.route('/:id')
   .get(protect, getFoodPostById)
   .put(protect, updateFoodPost);
+
+router.route('/:foodPostId/rate')
+  .post(protect, rateFoodPost);
+
+router.route('/:foodPostId/my-rating')
+  .get(protect, getMyRatingForFoodPost);
 
 module.exports = router;

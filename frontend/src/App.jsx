@@ -15,6 +15,7 @@ import CreateRoom from './pages/CreateRoom';
 import RoomDetails from './pages/RoomDetails';
 import NotificationsPage from './pages/NotificationsPage';
 import Profile from './pages/Profile';
+import Onboarding from './pages/Onboarding';
 
 // Route protector for secure pages
 const ProtectedRoute = ({ children }) => {
@@ -33,6 +34,10 @@ const ProtectedRoute = ({ children }) => {
     return <Navigate to="/" replace />;
   }
 
+  if (!user.isProfileComplete) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
   return children;
 };
 
@@ -44,8 +49,12 @@ const AppRoutes = () => {
       <Navbar />
       <main className="flex-1">
         <Routes>
-          <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Landing />} />
+          <Route path="/" element={user ? (user.isProfileComplete ? <Navigate to="/dashboard" replace /> : <Navigate to="/onboarding" replace />) : <Landing />} />
           
+          <Route path="/onboarding" element={
+            user ? (user.isProfileComplete ? <Navigate to="/dashboard" replace /> : <Onboarding />) : <Navigate to="/" replace />
+          } />
+
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <Dashboard />
