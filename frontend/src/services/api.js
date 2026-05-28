@@ -168,5 +168,25 @@ export const api = {
         method: 'PUT',
         headers: getHeaders()
       }).then(handleResponse)
+  },
+
+  // Messages (Group Chats & Direct DMs)
+  messages: {
+    send: (msgData) =>
+      fetch(`${API_URL}/messages`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(msgData)
+      }).then(handleResponse),
+
+    getRoomMessages: (roomId) =>
+      fetch(`${API_URL}/messages/room/${roomId}`, {
+        headers: getHeaders()
+      }).then(handleResponse),
+
+    getDirectMessages: (peerId) =>
+      fetch(`${API_URL}/messages/direct/${peerId}`, {
+        headers: getHeaders()
+      }).then(handleResponse)
   }
 };

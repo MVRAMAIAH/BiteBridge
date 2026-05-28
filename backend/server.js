@@ -32,6 +32,7 @@ app.use('/api/rooms', require('./routes/roomRoutes'));
 app.use('/api/food', require('./routes/foodRoutes'));
 app.use('/api/requests', require('./routes/requestRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
+app.use('/api/messages', require('./routes/messageRoutes'));
 
 // Basic health check
 app.get('/', (req, res) => {

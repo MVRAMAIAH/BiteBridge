@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
-import { Calendar, User, Users, MapPin, Tag, ShoppingBag, Send } from 'lucide-react';
+import { Calendar, User, Users, MapPin, Tag, ShoppingBag, Send, MessageSquare } from 'lucide-react';
+import DirectChatModal from './DirectChatModal';
 
 const FeedCard = ({ post, onRequested }) => {
   const { t } = useLanguage();
@@ -11,6 +12,7 @@ const FeedCard = ({ post, onRequested }) => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [showRequestForm, setShowRequestForm] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   const isOwnPost = post.createdBy?._id === user?.id || post.createdBy === user?.id;
 
@@ -55,17 +57,30 @@ const FeedCard = ({ post, onRequested }) => {
         </div>
 
         {/* Room identity logic */}
-        <div className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400">
-          {post.roomId ? (
-            <>
-              <Users className="w-3.5 h-3.5" />
-              <span>{t('postedByRoom')}: {post.roomId.name}</span>
-            </>
-          ) : (
-            <>
-              <User className="w-3.5 h-3.5" />
-              <span>{post.createdBy?.name || 'Community Peer'}</span>
-            </>
+        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+          <div className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400">
+            {post.roomId ? (
+              <>
+                <Users className="w-3.5 h-3.5" />
+                <span>{post.roomId.name}</span>
+              </>
+            ) : (
+              <>
+                <User className="w-3.5 h-3.5" />
+                <span>{post.createdBy?.name || 'Community Peer'}</span>
+              </>
+            )}
+          </div>
+
+          {!isOwnPost && post.createdBy && (
+            <button
+              onClick={() => setChatOpen(true)}
+              className="flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-spice-500 hover:text-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 transition-all cursor-pointer shadow-sm border border-slate-200 dark:border-slate-800"
+              title="Chat with Cook"
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>Chat</span>
+            </button>
           )}
         </div>
       </div>
@@ -145,6 +160,13 @@ const FeedCard = ({ post, onRequested }) => {
           Your active share listing
         </div>
       )}
+
+      {/* Direct Chat Overlay */}
+      <DirectChatModal
+        peer={post.createdBy}
+        isOpen={chatOpen}
+        onClose={() => setChatOpen(false)}
+      />
     </div>
   );
 };

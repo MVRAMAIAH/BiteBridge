@@ -35,12 +35,12 @@ const createFoodPost = async (req, res) => {
       .populate('createdBy', 'name email profileImage')
       .populate('roomId', 'name');
 
-    // Real-time broadcast: Find nearby users (within 10km) and notify them
+    // Real-time broadcast: Find nearby users (within 1km) and room members
     const coordinates = foodPost.location.coordinates;
     const io = getIO();
 
     if (io && coordinates && coordinates[0] !== 0) {
-      // Find nearby users
+      // 1. Find nearby users (within 1km)
       const nearbyUsers = await User.find({
         _id: { $ne: req.user.id },
         'location.coordinates': { $ne: [0, 0] },
@@ -50,20 +50,37 @@ const createFoodPost = async (req, res) => {
               type: 'Point',
               coordinates: coordinates
             },
-            $maxDistance: 10000 // 10 km
+            $maxDistance: 1000 // 1 km
           }
         }
       });
 
-      // Send notifications to all nearby users
-      for (const u of nearbyUsers) {
+      // 2. Find approved roommates in the same room group
+      let roommates = [];
+      if (roomId) {
+        const RoomMember = require('../models/RoomMember');
+        const approvedMembers = await RoomMember.find({ roomId, status: 'approved' });
+        const memberIds = approvedMembers
+          .map(m => m.userId.toString())
+          .filter(id => id !== req.user.id);
+        roommates = await User.find({ _id: { $in: memberIds } });
+      }
+
+      // Merge and deduplicate recipients list
+      const recipientsMap = {};
+      nearbyUsers.forEach(u => { recipientsMap[u._id.toString()] = u; });
+      roommates.forEach(u => { recipientsMap[u._id.toString()] = u; });
+      const recipients = Object.values(recipientsMap);
+
+      // Send notifications to all qualified recipients
+      for (const u of recipients) {
         const notif = await Notification.create({
           recipientId: u._id,
           senderId: req.user.id,
           type: 'new_food_post_nearby',
           referenceId: foodPost._id,
           onModel: 'FoodPost',
-          message: `New Curry/Food posted nearby: "${foodPost.title}"`
+          message: `New Curry/Food posted in your room group or nearby: "${foodPost.title}"`
         });
         
         io.to(u._id.toString()).emit('notification', notif);
