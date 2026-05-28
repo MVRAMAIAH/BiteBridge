@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import { Soup, Heart, Shield, HelpCircle } from 'lucide-react';
+import { signInWithGoogle } from '../services/firebase';
 
 const Landing = () => {
   const { login } = useAuth();
@@ -10,27 +11,37 @@ const Landing = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
-  const handleMockGoogleLogin = async (email, name, img) => {
+  const handleFirebaseGoogleLogin = async () => {
     setLoading(true);
-    // Simulating a real Google OAuth credential response block
-    const mockProfile = {
-      name,
-      email,
-      profileImage: img,
-      location: {
-        type: 'Point',
-        coordinates: [78.4867, 17.3850], // Hyderabad default
-        cityName: 'Hyderabad, Telangana'
-      }
-    };
+    try {
+      const result = await signInWithGoogle();
+      const userObj = result.user;
 
-    const res = await login(mockProfile);
-    if (res.success) {
-      navigate('/dashboard');
-    } else {
-      alert('Login failed: ' + res.message);
+      const res = await login({
+        name: userObj.displayName || 'BiteBridge Peer',
+        email: userObj.email,
+        profileImage: userObj.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(userObj.email)}`,
+        location: {
+          type: 'Point',
+          coordinates: [78.4867, 17.3850], // Hyderabad default
+          cityName: 'Hyderabad, Telangana'
+        }
+      });
+
+      if (res.success) {
+        navigate('/dashboard');
+      } else {
+        alert('Login failed: ' + res.message);
+      }
+    } catch (err) {
+      console.error('Firebase Auth error:', err);
+      // Suppress alert if user closed the login popup
+      if (err.code !== 'auth/popup-closed-by-user') {
+        alert('Google Sign-in failed. Please try again.');
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -63,7 +74,7 @@ const Landing = () => {
           </p>
 
           <button
-            onClick={() => handleMockGoogleLogin('venket@bitebridge.com', 'Venket Ramaiah', 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120')}
+            onClick={handleFirebaseGoogleLogin}
             disabled={loading}
             className="w-full bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-350 border border-slate-200 dark:border-slate-800 hover:border-spice-500 dark:hover:border-spice-500 py-3.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-sm active:scale-95 cursor-pointer"
           >
