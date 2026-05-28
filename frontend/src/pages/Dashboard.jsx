@@ -3,7 +3,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import FeedCard from '../components/FeedCard';
-import { Search, MapPin, Sparkles, Navigation, Shield, Compass, User, Users } from 'lucide-react';
+import { Search, MapPin, Sparkles, Navigation, Shield, Compass, User, Users, UtensilsCrossed } from 'lucide-react';
 
 const Dashboard = () => {
   const { t } = useLanguage();
@@ -88,6 +88,12 @@ const Dashboard = () => {
       setLoading(false);
     }
   };
+
+  // Calculate total food portions from available posts
+  const totalPortions = posts.reduce((sum, post) => {
+    const num = parseInt(post.quantity);
+    return sum + (isNaN(num) ? 1 : num);
+  }, 0);
 
   useEffect(() => {
     fetchData();
@@ -255,6 +261,37 @@ const Dashboard = () => {
             <Compass className="w-4 h-4" />
             <span>{mapOpen ? 'Hide Proximity Map' : 'View Proximity Map'}</span>
           </button>
+        </div>
+      </div>
+
+      {/* Stats Summary Row */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <div className="glass-panel p-4 rounded-2xl border border-slate-100 dark:border-slate-850 flex items-center gap-3">
+          <div className="p-2.5 bg-spice-100 dark:bg-spice-950/20 rounded-xl">
+            <UtensilsCrossed className="w-5 h-5 text-spice-500" />
+          </div>
+          <div>
+            <p className="text-xl font-extrabold text-slate-800 dark:text-white">{totalPortions}</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Food Portions</p>
+          </div>
+        </div>
+        <div className="glass-panel p-4 rounded-2xl border border-slate-100 dark:border-slate-850 flex items-center gap-3">
+          <div className="p-2.5 bg-emerald-100 dark:bg-emerald-950/20 rounded-xl">
+            <Users className="w-5 h-5 text-emerald-500" />
+          </div>
+          <div>
+            <p className="text-xl font-extrabold text-slate-800 dark:text-white">{nearbyUsers.length}</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Neighbors</p>
+          </div>
+        </div>
+        <div className="glass-panel p-4 rounded-2xl border border-slate-100 dark:border-slate-850 flex items-center gap-3 col-span-2 sm:col-span-1">
+          <div className="p-2.5 bg-blue-100 dark:bg-blue-950/20 rounded-xl">
+            <Compass className="w-5 h-5 text-blue-500" />
+          </div>
+          <div>
+            <p className="text-xl font-extrabold text-slate-800 dark:text-white">{posts.length}</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Dishes</p>
+          </div>
         </div>
       </div>
 

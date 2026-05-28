@@ -3,7 +3,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { useNavigate, Link } from 'react-router-dom';
-import { Users, Plus, ArrowRight, Eye, UserCheck, Key } from 'lucide-react';
+import { Users, Plus, ArrowRight, Eye, UserCheck, Key, Star, Search } from 'lucide-react';
 
 const Rooms = () => {
   const { t } = useLanguage();
@@ -19,7 +19,8 @@ const Rooms = () => {
   const filteredRooms = rooms.filter(room => 
     room.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (room.description && room.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (room.location?.cityName && room.location.cityName.toLowerCase().includes(searchTerm.toLowerCase()))
+    (room.location?.cityName && room.location.cityName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (room.adminId?.name && room.adminId.name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const fetchRooms = async () => {
@@ -171,14 +172,22 @@ const Rooms = () => {
             
             {/* Search Input Box */}
             <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search rooms or cities..."
-                className="w-full pl-3 pr-8 py-2.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-spice-500 text-slate-705 dark:text-white font-medium"
+                placeholder="Search rooms, admins, or cities..."
+                className="w-full pl-9 pr-8 py-2.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-spice-500 focus:ring-2 focus:ring-spice-500/20 text-slate-700 dark:text-white font-medium transition-all"
               />
-              <span className="absolute right-3 top-3 text-slate-400 text-xs">🔍</span>
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white text-sm"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           </div>
 
@@ -198,13 +207,18 @@ const Rooms = () => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {filteredRooms.map((room) => (
-                <div key={room._id} className="glass-panel p-5 rounded-2xl glow-card border border-slate-100 dark:border-slate-850 flex flex-col justify-between">
+                <div
+                  key={room._id}
+                  onClick={() => navigate(`/rooms/${room._id}`)}
+                  className="glass-panel p-5 rounded-2xl glow-card border border-slate-100 dark:border-slate-850 flex flex-col justify-between cursor-pointer hover:border-spice-500/50 dark:hover:border-spice-500/30 hover:shadow-lg transition-all group"
+                >
                   <div>
                     <div className="flex justify-between items-start mb-1 gap-2">
-                      <h3 className="font-bold text-lg text-slate-800 dark:text-white capitalize">{room.name}</h3>
+                      <h3 className="font-bold text-lg text-slate-800 dark:text-white capitalize group-hover:text-spice-500 transition-colors">{room.name}</h3>
                       {room.rating > 0 && (
                         <span className="flex items-center gap-0.5 text-xs font-bold text-amber-500 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/15 select-none shrink-0" title="Room Rating (average of roommates)">
-                          ★ {room.rating}
+                          <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                          {room.rating}
                         </span>
                       )}
                     </div>
@@ -221,8 +235,8 @@ const Rooms = () => {
                         <span>Joined</span>
                       </span>
                     ) : (
-                      <span className="text-spice-500 font-semibold flex items-center gap-0.5">
-                        <span>Code Required</span>
+                      <span className="text-spice-500 font-semibold flex items-center gap-0.5 group-hover:gap-1.5 transition-all">
+                        <span>View Details</span>
                         <ArrowRight className="w-3 h-3" />
                       </span>
                     )}
