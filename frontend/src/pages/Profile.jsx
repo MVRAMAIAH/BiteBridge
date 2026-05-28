@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { api } from '../services/api';
-import { User, MapPin, Globe, Inbox, Send, CheckCircle2, XCircle, Phone, Home, Star, AlertCircle, Sparkles } from 'lucide-react';
+import { User, MapPin, Globe, Inbox, Send, CheckCircle2, XCircle, Phone, Home, Star, AlertCircle, Sparkles, DoorOpen } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Profile = () => {
   const { user, updateProfile, refreshProfile } = useAuth();
@@ -241,6 +242,17 @@ const Profile = () => {
               {user?.averageRating > 0 && <Sparkles className="w-4 h-4 text-amber-500" />}
             </h2>
             <p className="text-xs text-slate-450 dark:text-slate-500 font-semibold">{user?.email}</p>
+
+            {/* Room Membership Badge */}
+            {user?.roomId && (
+              <Link
+                to={`/rooms/${user.roomId._id || user.roomId}`}
+                className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-500/10 rounded-full text-indigo-600 dark:text-indigo-400 font-bold text-xs border border-indigo-500/20 hover:bg-indigo-500/20 transition-colors"
+              >
+                <DoorOpen className="w-3.5 h-3.5" />
+                <span>Room: {user.roomId.name || 'My Room'}</span>
+              </Link>
+            )}
 
             {/* Ratings Aggregate Badge */}
             {user?.averageRating > 0 ? (

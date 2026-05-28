@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
-import { Soup, Heart, Shield, HelpCircle, MapPin } from 'lucide-react';
+import { Soup, Heart, Shield, HelpCircle, MapPin, Search } from 'lucide-react';
 import { signInWithGoogle } from '../services/firebase';
 import { api } from '../services/api';
 
@@ -12,6 +12,18 @@ const Landing = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({ totalFoodCount: 0, foodPosts: [] });
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredPosts = useMemo(() => {
+    if (!searchTerm.trim()) return stats.foodPosts;
+    const q = searchTerm.toLowerCase();
+    return stats.foodPosts.filter(p =>
+      p.title?.toLowerCase().includes(q) ||
+      p.description?.toLowerCase().includes(q) ||
+      p.createdBy?.name?.toLowerCase().includes(q) ||
+      p.location?.cityName?.toLowerCase().includes(q)
+    );
+  }, [searchTerm, stats.foodPosts]);
 
   const handleFirebaseGoogleLogin = async () => {
     setLoading(true);
@@ -158,6 +170,64 @@ const Landing = () => {
           </button>
         </div>
 
+        {/* Search Bar */}
+        <div className="w-full max-w-2xl mx-auto mb-8 relative z-10">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search dishes, cooks, or locations..."
+              className="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm font-medium text-slate-700 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-spice-500 focus:ring-2 focus:ring-spice-500/20 transition-all shadow-sm"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white text-lg font-bold w-6 h-6 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Search Results Grid */}
+        {searchTerm.trim() && (
+          <div className="w-full max-w-3xl mx-auto mb-10 animate-fade-in z-10 relative">
+            <h3 className="text-xs font-extrabold text-slate-500 uppercase tracking-widest mb-4 text-center">
+              🔍 {filteredPosts.length} result{filteredPosts.length !== 1 ? 's' : ''} for "{searchTerm}"
+            </h3>
+            {filteredPosts.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredPosts.map((post) => (
+                  <div
+                    key={post._id}
+                    className="glass-panel p-4 rounded-2xl border border-slate-100 dark:border-slate-850 flex items-center gap-3 shadow-sm hover:shadow-md transition-shadow"
+                  >
+                    <div className="w-12 h-12 bg-spice-100 dark:bg-spice-950/20 text-xl rounded-xl flex items-center justify-center shrink-0">
+                      🍛
+                    </div>
+                    <div className="text-left truncate">
+                      <p className="font-extrabold text-sm text-slate-800 dark:text-white capitalize truncate">
+                        {post.title}
+                      </p>
+                      <p className="text-[10px] text-slate-500 font-bold">
+                        By {post.createdBy?.name || 'Local Cook'} • {post.price > 0 ? `₹${post.price}` : 'FREE'}
+                      </p>
+                      <span className="inline-block text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-450 mt-1 uppercase">
+                        {post.quantity} left
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400 italic text-center py-6">No dishes match your search.</p>
+            )}
+          </div>
+        )}
+
         {/* Dynamic Proximity Map Preview */}
         <div className="glass-panel p-4 rounded-3xl border border-slate-100 dark:border-slate-850 w-full max-w-2xl mx-auto mb-10 text-center shadow-md animate-fade-in relative z-10">
           <div className="flex justify-between items-center mb-3 px-2">
@@ -177,7 +247,7 @@ const Landing = () => {
         </div>
 
         {/* Infinite Scrolling Movie Marquee */}
-        {stats.foodPosts.length > 0 && (
+        {filteredPosts.length > 0 && !searchTerm.trim() && (
           <div className="w-full max-w-3xl mx-auto overflow-hidden relative py-6 border-t border-slate-100 dark:border-slate-850 mb-10 select-none">
             <div className="flex justify-center mb-3">
               <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest">
@@ -192,7 +262,7 @@ const Landing = () => {
               
               <div className="animate-marquee flex gap-4">
                 {/* Render Duplicated lists for infinite loop */}
-                {[...stats.foodPosts, ...stats.foodPosts].map((post, idx) => (
+                {[...filteredPosts, ...filteredPosts].map((post, idx) => (
                   <div
                     key={post._id + '-' + idx}
                     className="glass-panel p-4 rounded-2xl border border-slate-100 dark:border-slate-850 flex items-center gap-3 w-64 shrink-0 shadow-sm"
