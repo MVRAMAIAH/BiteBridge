@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
-import { Soup, Heart, Shield, HelpCircle } from 'lucide-react';
+import { Soup, Heart, Shield, HelpCircle, MapPin } from 'lucide-react';
 import { signInWithGoogle } from '../services/firebase';
+import { api } from '../services/api';
 
 const Landing = () => {
   const { login } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState({ totalFoodCount: 0, foodPosts: [] });
 
   const handleFirebaseGoogleLogin = async () => {
     setLoading(true);
@@ -43,18 +45,85 @@ const Landing = () => {
     }
   };
 
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await api.food.getPublicStats();
+        if (res.success) {
+          setStats({
+            totalFoodCount: res.totalFoodCount,
+            foodPosts: res.foodPosts
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching public stats:', err);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  // Initialize Landing Page Preview Map
+  useEffect(() => {
+    if (!window.L) return;
+    try {
+      const L = window.L;
+      const map = L.map('landing-preview-map', {
+        zoomControl: false,
+        scrollWheelZoom: false,
+        dragging: false,
+        doubleClickZoom: false,
+        boxZoom: false,
+        touchZoom: false
+      }).setView([17.3850, 78.4867], 13); // Default Hyderabad
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+      // Glowing active zone circle
+      L.circle([17.3850, 78.4867], {
+        radius: 1200,
+        color: '#f97316', // spice orange
+        fillColor: '#f97316',
+        fillOpacity: 0.12,
+        weight: 1.5,
+        dashArray: '3, 6'
+      }).addTo(map);
+
+      const markerIcon = L.divIcon({
+        className: 'landing-spot-marker',
+        html: `
+          <div class="flex items-center justify-center w-8 h-8 bg-spice-500 rounded-full border-2 border-white shadow-lg animate-bounce">
+            <span class="text-xs">🍛</span>
+          </div>
+        `,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+      });
+
+      L.marker([17.3850, 78.4867], { icon: markerIcon }).addTo(map);
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
   return (
     <div className="min-h-[90vh] flex flex-col items-center justify-center px-4 py-12 relative overflow-hidden bg-slate-50 dark:bg-[#0b0c10]">
       {/* Decorative Orbs */}
       <div className="absolute top-20 left-10 w-72 h-72 bg-spice-500/10 rounded-full blur-3xl" />
       <div className="absolute bottom-20 right-10 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl" />
 
-      <div className="max-w-4xl mx-auto text-center z-10">
-        <div className="flex justify-center mb-6">
+      <div className="max-w-4xl mx-auto text-center z-10 w-full">
+        <div className="flex justify-center mb-4">
           <div className="bg-spice-100 dark:bg-spice-950/30 p-4 rounded-3xl border border-spice-200 dark:border-spice-800 animate-spin-slow">
             <Soup className="w-16 h-16 text-spice-500" />
           </div>
         </div>
+
+        {/* Counter Badge */}
+        {stats.totalFoodCount > 0 && (
+          <div className="inline-flex items-center gap-1.5 bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-extrabold text-xs px-3.5 py-1.5 rounded-full border border-emerald-500/15 mb-6 animate-pulse select-none">
+            <span>🔥 {stats.totalFoodCount} Total Dishes Shared!</span>
+          </div>
+        )}
 
         <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight mb-4 text-slate-800 dark:text-white leading-tight">
           🍛 {t('welcome')}
@@ -63,6 +132,7 @@ const Landing = () => {
         <p className="text-lg sm:text-xl text-slate-600 dark:text-slate-350 max-w-2xl mx-auto mb-8 font-medium leading-relaxed">
           {t('subWelcome')}
         </p>
+
         {/* Beautiful Dynamic Registration / Login Panel */}
         <div className="glass-panel max-w-sm mx-auto p-6 sm:p-8 rounded-3xl glow-card mb-12 border border-slate-100 dark:border-slate-850">
           <h2 className="font-extrabold text-xl mb-2 text-slate-800 dark:text-white">
@@ -75,7 +145,7 @@ const Landing = () => {
           <button
             onClick={handleFirebaseGoogleLogin}
             disabled={loading}
-            className="w-full bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-350 border border-slate-200 dark:border-slate-800 hover:border-spice-500 dark:hover:border-spice-500 py-3.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-sm active:scale-95 cursor-pointer"
+            className="w-full bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-350 border border-slate-200 dark:border-slate-880 hover:border-spice-500 dark:hover:border-spice-500 py-3.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-sm active:scale-95 cursor-pointer"
           >
             {/* Google G logo svg */}
             <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -87,6 +157,67 @@ const Landing = () => {
             <span>{loading ? 'Authenticating...' : 'Sign In with Google'}</span>
           </button>
         </div>
+
+        {/* Dynamic Proximity Map Preview */}
+        <div className="glass-panel p-4 rounded-3xl border border-slate-100 dark:border-slate-850 w-full max-w-2xl mx-auto mb-10 text-center shadow-md animate-fade-in relative z-10">
+          <div className="flex justify-between items-center mb-3 px-2">
+            <h3 className="font-extrabold text-xs sm:text-sm text-slate-700 dark:text-slate-350 flex items-center gap-1.5">
+              <MapPin className="w-4 h-4 text-spice-500 animate-pulse" />
+              <span>Active Curry Circles (Hyderabad Area)</span>
+            </h3>
+            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-orange-100 text-orange-700 dark:bg-orange-950/20 dark:text-orange-400">
+              Curry Map Zone
+            </span>
+          </div>
+
+          <div
+            id="landing-preview-map"
+            className="w-full h-[220px] rounded-2xl overflow-hidden shadow-inner border border-slate-100/50 dark:border-slate-900 pointer-events-none"
+          />
+        </div>
+
+        {/* Infinite Scrolling Movie Marquee */}
+        {stats.foodPosts.length > 0 && (
+          <div className="w-full max-w-3xl mx-auto overflow-hidden relative py-6 border-t border-slate-100 dark:border-slate-850 mb-10 select-none">
+            <div className="flex justify-center mb-3">
+              <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest">
+                🍛 Live Fresh Curry Feed
+              </span>
+            </div>
+            
+            <div className="relative w-full overflow-hidden flex">
+              {/* Soft gradient fade overlays on edges */}
+              <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-slate-50 dark:from-[#0b0c10] to-transparent z-10 pointer-events-none" />
+              <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-slate-50 dark:from-[#0b0c10] to-transparent z-10 pointer-events-none" />
+              
+              <div className="animate-marquee flex gap-4">
+                {/* Render Duplicated lists for infinite loop */}
+                {[...stats.foodPosts, ...stats.foodPosts].map((post, idx) => (
+                  <div
+                    key={post._id + '-' + idx}
+                    className="glass-panel p-4 rounded-2xl border border-slate-100 dark:border-slate-850 flex items-center gap-3 w-64 shrink-0 shadow-sm"
+                  >
+                    <div className="w-12 h-12 bg-spice-100 dark:bg-spice-950/20 text-xl rounded-xl flex items-center justify-center shrink-0">
+                      🍛
+                    </div>
+                    <div className="text-left truncate">
+                      <p className="font-extrabold text-sm text-slate-800 dark:text-white capitalize truncate">
+                        {post.title}
+                      </p>
+                      <p className="text-[10px] text-slate-500 font-bold">
+                        By {post.createdBy?.name || 'Local Cook'} • {post.price > 0 ? `₹${post.price}` : 'FREE'}
+                      </p>
+                      <span className="inline-block text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-450 mt-1 uppercase">
+                        {post.quantity} left
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Feature Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
           <div className="glass-panel p-6 rounded-2xl glow-card text-center border border-slate-100 dark:border-slate-850">

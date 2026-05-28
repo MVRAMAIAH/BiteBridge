@@ -251,9 +251,33 @@ const updateFoodPost = async (req, res) => {
   }
 };
 
+// @desc    Get public food posts count and recent listings
+// @route   GET /api/food/public
+// @access  Public
+const getPublicFoodPosts = async (req, res) => {
+  try {
+    const totalFoodCount = await FoodPost.countDocuments({});
+    const availablePosts = await FoodPost.find({ status: 'available' })
+      .populate('createdBy', 'name email profileImage')
+      .populate('roomId', 'name')
+      .sort({ createdAt: -1 })
+      .limit(10);
+
+    res.json({
+      success: true,
+      totalFoodCount,
+      foodPosts: availablePosts
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 module.exports = {
   createFoodPost,
   getFoodPosts,
   getFoodPostById,
-  updateFoodPost
+  updateFoodPost,
+  getPublicFoodPosts
 };

@@ -46,6 +46,9 @@ export const api = {
 
   // Food posts
   food: {
+    getPublicStats: () =>
+      fetch(`${API_URL}/food/public`).then(handleResponse),
+
     create: (postData) =>
       fetch(`${API_URL}/food`, {
         method: 'POST',

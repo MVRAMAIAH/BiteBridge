@@ -14,6 +14,13 @@ const Rooms = () => {
   const [joinCode, setJoinCode] = useState('');
   const [joinLoading, setJoinLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredRooms = rooms.filter(room => 
+    room.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (room.description && room.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (room.location?.cityName && room.location.cityName.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
   const fetchRooms = async () => {
     setLoading(true);
@@ -159,9 +166,20 @@ const Rooms = () => {
 
         {/* Right Side: Rooms catalog */}
         <div className="lg:col-span-2">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <h2 className="text-2xl font-extrabold text-slate-800 dark:text-white">Active Curry Circles</h2>
-            <span className="text-xs font-bold text-slate-400">{rooms.length} rooms listed</span>
+            
+            {/* Search Input Box */}
+            <div className="relative w-full sm:w-64">
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search rooms or cities..."
+                className="w-full pl-3 pr-8 py-2.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-spice-500 text-slate-705 dark:text-white font-medium"
+              />
+              <span className="absolute right-3 top-3 text-slate-400 text-xs">🔍</span>
+            </div>
           </div>
 
           {loading ? (
@@ -169,17 +187,17 @@ const Rooms = () => {
               <div className="w-10 h-10 border-4 border-spice-500 border-t-transparent rounded-full animate-spin" />
               <p className="text-sm text-slate-500">Loading rooms...</p>
             </div>
-          ) : rooms.length === 0 ? (
-            <div className="glass-panel rounded-3xl p-12 text-center border border-slate-100 dark:border-slate-850">
+          ) : filteredRooms.length === 0 ? (
+            <div className="glass-panel rounded-3xl p-12 text-center border border-slate-100 dark:border-slate-850 animate-fade-in">
               <Users className="w-16 h-16 text-slate-350 dark:text-slate-700 mx-auto mb-4" />
-              <h3 className="font-extrabold text-lg text-slate-700 mb-1">No Groups Listed</h3>
-              <p className="text-sm text-slate-400 max-w-sm mx-auto">
-                There are no PG, Hostel, or apartment rooms registered yet. Be the first to create a Room!
+              <h3 className="font-extrabold text-lg text-slate-700 dark:text-slate-300 mb-1">No Matching Groups</h3>
+              <p className="text-xs sm:text-sm text-slate-400">
+                No rooms match your search query. Try searching for a different PG name, hostel, or locality!
               </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {rooms.map((room) => (
+              {filteredRooms.map((room) => (
                 <div key={room._id} className="glass-panel p-5 rounded-2xl glow-card border border-slate-100 dark:border-slate-850 flex flex-col justify-between">
                   <div>
                     <div className="flex justify-between items-start mb-1 gap-2">

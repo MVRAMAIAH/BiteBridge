@@ -4,10 +4,13 @@ const {
   createFoodPost,
   getFoodPosts,
   getFoodPostById,
-  updateFoodPost
+  updateFoodPost,
+  getPublicFoodPosts
 } = require('../controllers/foodPostController');
 const { protect } = require('../middleware/authMiddleware');
 const { rateFoodPost, getMyRatingForFoodPost } = require('../controllers/ratingController');
+
+router.get('/public', getPublicFoodPosts);
 
 router.route('/')
   .post(protect, createFoodPost)

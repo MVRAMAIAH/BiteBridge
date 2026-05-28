@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
+import { api } from '../services/api';
 
 const SocketContext = createContext();
 
@@ -18,6 +19,22 @@ export const SocketProvider = ({ children }) => {
       }
       return;
     }
+
+    // Fetch initial unread count
+    const fetchUnreadCount = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const res = await api.notifications.getAll();
+        if (res.success) {
+          const count = res.notifications.filter(n => !n.isRead).length;
+          setUnreadCount(count);
+        }
+      } catch (err) {
+        console.error('Error fetching unread count:', err);
+      }
+    };
+    fetchUnreadCount();
 
     const socketInstance = io('http://localhost:5000', {
       query: { userId: user.id || user._id }
