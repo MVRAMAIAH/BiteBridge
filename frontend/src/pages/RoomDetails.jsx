@@ -174,7 +174,14 @@ const RoomDetails = () => {
               </span>
             )}
           </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-white capitalize mb-1">{room?.name}</h2>
+          <div className="flex items-center gap-2 mb-1">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-white capitalize">{room?.name}</h2>
+            {room?.rating > 0 && (
+              <span className="flex items-center gap-0.5 text-xs font-bold text-amber-500 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/15 select-none" title="Room Rating (average of roommates)">
+                ★ {room.rating} / 5
+              </span>
+            )}
+          </div>
           <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
             {room?.description || 'Active sharing group room.'}
           </p>

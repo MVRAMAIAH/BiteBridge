@@ -108,7 +108,11 @@ const FeedCard = ({ post, onRequested }) => {
       {/* Action Button */}
       {!isOwnPost && post.status === 'available' && (
         <div>
-          {!showRequestForm ? (
+          {post.hasRequested ? (
+            <div className="w-full bg-emerald-50 dark:bg-emerald-950/20 text-emerald-605 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30 font-bold py-2.5 rounded-xl text-center text-sm select-none">
+              ✓ Requested (Waiting for Cook)
+            </div>
+          ) : !showRequestForm ? (
             <button
               onClick={() => setShowRequestForm(true)}
               className="w-full bg-spice-500 hover:bg-spice-600 active:scale-95 text-white font-bold py-2.5 rounded-xl text-sm transition-all shadow-md shadow-spice-500/10 flex items-center justify-center gap-1.5"

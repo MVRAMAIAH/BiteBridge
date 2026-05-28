@@ -133,6 +133,23 @@ const manageJoinRequest = async (req, res) => {
       // Update User object to associate roomId
       await User.findByIdAndUpdate(roomMember.userId, { roomId: roomMember.roomId._id });
 
+      // Recalculate room rating
+      const updateRoomRating = async (roomId) => {
+        const approvedMembers = await RoomMember.find({ roomId, status: 'approved' });
+        if (approvedMembers.length > 0) {
+          const memberIds = approvedMembers.map(m => m.userId);
+          const users = await User.find({ _id: { $in: memberIds }, averageRating: { $gt: 0 } });
+          
+          let average = 0;
+          if (users.length > 0) {
+            const sum = users.reduce((acc, u) => acc + u.averageRating, 0);
+            average = parseFloat((sum / users.length).toFixed(1));
+          }
+          await Room.findByIdAndUpdate(roomId, { rating: average });
+        }
+      };
+      await updateRoomRating(roomMember.roomId._id);
+
       // Notify the requester
       const notif = await Notification.create({
         recipientId: roomMember.userId,
@@ -217,9 +234,29 @@ const leaveRoom = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Admin cannot leave the room' });
     }
 
+    const activeRoomId = user.roomId;
     await RoomMember.findOneAndDelete({ roomId: user.roomId, userId: req.user.id });
     user.roomId = null;
     await user.save();
+
+    // Recalculate room rating
+    const updateRoomRating = async (roomId) => {
+      const approvedMembers = await RoomMember.find({ roomId, status: 'approved' });
+      if (approvedMembers.length > 0) {
+        const memberIds = approvedMembers.map(m => m.userId);
+        const users = await User.find({ _id: { $in: memberIds }, averageRating: { $gt: 0 } });
+        
+        let average = 0;
+        if (users.length > 0) {
+          const sum = users.reduce((acc, u) => acc + u.averageRating, 0);
+          average = parseFloat((sum / users.length).toFixed(1));
+        }
+        await Room.findByIdAndUpdate(roomId, { rating: average });
+      } else {
+        await Room.findByIdAndUpdate(roomId, { rating: 0 });
+      }
+    };
+    await updateRoomRating(activeRoomId);
 
     res.json({ success: true, message: 'Left room successfully' });
   } catch (error) {

@@ -5,7 +5,7 @@ import { api } from '../services/api';
 import { User, MapPin, Globe, Inbox, Send, CheckCircle2, XCircle, Phone, Home, Star, AlertCircle, Sparkles } from 'lucide-react';
 
 const Profile = () => {
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, refreshProfile } = useAuth();
   const { t, locale, setLocale } = useLanguage();
 
   // Profile Edit states
@@ -30,6 +30,8 @@ const Profile = () => {
   const [ratingComment, setRatingComment] = useState('');
   const [submittingRating, setSubmittingRating] = useState(false);
   const [ratedPosts, setRatedPosts] = useState({}); // e.g. { foodPostId: true }
+  const [ratingType, setRatingType] = useState('cook'); // 'cook' or 'buyer'
+  const [ratingTargetUser, setRatingTargetUser] = useState(null); // Target requester/buyer user being rated
 
   const fetchRequests = async () => {
     setLoadingReqs(true);
@@ -69,6 +71,15 @@ const Profile = () => {
       }
     });
   }, [outgoingReqs]);
+
+  // Fetch rating status for accepted incoming requests (completed shares)
+  useEffect(() => {
+    incomingReqs.forEach(req => {
+      if (req.status === 'accepted' && req.foodPostId?._id) {
+        checkRatingStatus(req.foodPostId._id);
+      }
+    });
+  }, [incomingReqs]);
 
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
@@ -123,6 +134,7 @@ const Profile = () => {
         setRatingValue(5);
         setRatingComment('');
         fetchRequests();
+        refreshProfile();
       }
     } catch (err) {
       alert(err.message || 'Failed to submit rating.');
@@ -141,10 +153,12 @@ const Profile = () => {
             <div className="flex justify-between items-start">
               <div>
                 <h3 className="font-extrabold text-lg text-slate-800 dark:text-white">
-                  Rate Cook & Food Post
+                  {ratingType === 'cook' ? 'Rate Cook & Food Post' : 'Rate Exchange Partner / Buyer'}
                 </h3>
                 <p className="text-xs text-slate-500 font-semibold capitalize mt-1">
-                  How was the "{ratingModalPost.title}"?
+                  {ratingType === 'cook' 
+                    ? `How was the "${ratingModalPost.title}"?` 
+                    : `How was your exchange experience with "${ratingTargetUser?.name || 'Neighbor'}"?`}
                 </p>
               </div>
               <button
@@ -177,7 +191,10 @@ const Profile = () => {
                   ))}
                 </div>
                 <span className="text-xs font-bold text-slate-500 mt-2">
-                  {ratingValue === 5 ? 'Excellent Curry!' : ratingValue === 4 ? 'Tasty Food' : ratingValue === 3 ? 'Good Sharing' : ratingValue === 2 ? 'Fair' : 'Needs Improvement'}
+                  {ratingType === 'cook'
+                    ? (ratingValue === 5 ? 'Excellent Curry!' : ratingValue === 4 ? 'Tasty Food' : ratingValue === 3 ? 'Good Sharing' : ratingValue === 2 ? 'Fair' : 'Needs Improvement')
+                    : (ratingValue === 5 ? 'Perfect Exchange Partner!' : ratingValue === 4 ? 'Very Friendly & On Time' : ratingValue === 3 ? 'Good Exchange' : ratingValue === 2 ? 'Fair' : 'Needs Improvement')
+                  }
                 </span>
               </div>
 
@@ -189,7 +206,7 @@ const Profile = () => {
                 <textarea
                   value={ratingComment}
                   onChange={(e) => setRatingComment(e.target.value)}
-                  placeholder="Share your culinary experience with this homemade dish..."
+                  placeholder={ratingType === 'cook' ? "Share your culinary experience with this homemade dish..." : "Share feedback on exchange timing, communication, or friendliness..."}
                   rows={3}
                   className="w-full p-3 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl focus:outline-none focus:border-spice-500 text-slate-700 dark:text-white font-medium"
                 />
@@ -433,6 +450,29 @@ const Profile = () => {
                           </button>
                         </div>
                       )}
+
+                      {req.status === 'accepted' && req.foodPostId && (
+                        <div className="flex items-center">
+                          {ratedPosts[req.foodPostId._id] ? (
+                            <div className="flex items-center gap-1 text-emerald-500 font-extrabold text-xs bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/15 animate-pulse">
+                              <Star className="w-3.5 h-3.5 fill-emerald-500 text-emerald-500" />
+                              <span>Buyer Rated!</span>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setRatingType('buyer');
+                                setRatingTargetUser(req.requesterId);
+                                setRatingModalPost(req.foodPostId);
+                              }}
+                              className="bg-amber-500 hover:bg-amber-600 text-white font-extrabold px-4 py-2 rounded-xl text-xs flex items-center gap-1 active:scale-95 transition-all shadow-md shadow-amber-500/10"
+                            >
+                              <Star className="w-3.5 h-3.5 fill-white text-white" />
+                              <span>Rate Buyer</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -495,7 +535,10 @@ const Profile = () => {
                             </div>
                           ) : (
                             <button
-                              onClick={() => setRatingModalPost(req.foodPostId)}
+                              onClick={() => {
+                                setRatingType('cook');
+                                setRatingModalPost(req.foodPostId);
+                              }}
                               className="bg-amber-500 hover:bg-amber-600 text-white font-extrabold px-4 py-2 rounded-xl text-xs flex items-center gap-1 active:scale-95 transition-all shadow-md shadow-amber-500/10"
                             >
                               <Star className="w-3.5 h-3.5 fill-white text-white" />

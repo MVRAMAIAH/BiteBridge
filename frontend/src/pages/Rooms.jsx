@@ -182,7 +182,14 @@ const Rooms = () => {
               {rooms.map((room) => (
                 <div key={room._id} className="glass-panel p-5 rounded-2xl glow-card border border-slate-100 dark:border-slate-850 flex flex-col justify-between">
                   <div>
-                    <h3 className="font-bold text-lg text-slate-800 dark:text-white capitalize mb-1">{room.name}</h3>
+                    <div className="flex justify-between items-start mb-1 gap-2">
+                      <h3 className="font-bold text-lg text-slate-800 dark:text-white capitalize">{room.name}</h3>
+                      {room.rating > 0 && (
+                        <span className="flex items-center gap-0.5 text-xs font-bold text-amber-500 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/15 select-none shrink-0" title="Room Rating (average of roommates)">
+                          ★ {room.rating}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mb-3">Admin: {room.adminId?.name || 'Local Host'}</p>
                     <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm line-clamp-3 leading-relaxed mb-4">
                       {room.description || 'Community room created for sharing fresh, local curries.'}

@@ -1,6 +1,7 @@
 const FoodPost = require('../models/FoodPost');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
+const Request = require('../models/Request');
 const { getIO } = require('../services/socketService');
 
 // @desc    Create a new Food Post
@@ -132,13 +133,27 @@ const getFoodPosts = async (req, res) => {
 
       const total = await FoodPost.countDocuments({ status: 'available' }); // total count for pagination info
 
+      // Fetch requester status
+      const postIds = posts.map(p => p._id);
+      const userRequests = await Request.find({
+        foodPostId: { $in: postIds },
+        requesterId: req.user.id
+      });
+      const requestedPostIds = new Set(userRequests.map(r => r.foodPostId.toString()));
+
+      const postsWithRequestedField = posts.map(p => {
+        const pObj = p.toObject();
+        pObj.hasRequested = requestedPostIds.has(p._id.toString());
+        return pObj;
+      });
+
       return res.json({
         success: true,
         count: posts.length,
         total,
         page,
         pages: Math.ceil(total / limit),
-        foodPosts: posts
+        foodPosts: postsWithRequestedField
       });
     }
 
@@ -152,13 +167,27 @@ const getFoodPosts = async (req, res) => {
 
     const total = await FoodPost.countDocuments({ status: 'available' });
 
+    // Fetch requester status
+    const postIds = posts.map(p => p._id);
+    const userRequests = await Request.find({
+      foodPostId: { $in: postIds },
+      requesterId: req.user.id
+    });
+    const requestedPostIds = new Set(userRequests.map(r => r.foodPostId.toString()));
+
+    const postsWithRequestedField = posts.map(p => {
+      const pObj = p.toObject();
+      pObj.hasRequested = requestedPostIds.has(p._id.toString());
+      return pObj;
+    });
+
     res.json({
       success: true,
       count: posts.length,
       total,
       page,
       pages: Math.ceil(total / limit),
-      foodPosts: posts
+      foodPosts: postsWithRequestedField
     });
   } catch (error) {
     console.error(error);
@@ -179,7 +208,16 @@ const getFoodPostById = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Food post not found' });
     }
 
-    res.json({ success: true, foodPost: post });
+    // Check if user has already requested this post
+    const existingRequest = await Request.findOne({
+      foodPostId: post._id,
+      requesterId: req.user.id
+    });
+
+    const postObj = post.toObject();
+    postObj.hasRequested = !!existingRequest;
+
+    res.json({ success: true, foodPost: postObj });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Server error' });

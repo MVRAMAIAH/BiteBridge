@@ -35,6 +35,10 @@ const RoomSchema = new mongoose.Schema({
       default: ''
     }
   },
+  rating: {
+    type: Number,
+    default: 0
+  },
   createdAt: {
     type: Date,
     default: Date.now

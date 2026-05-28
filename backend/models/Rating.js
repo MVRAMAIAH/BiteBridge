@@ -16,6 +16,10 @@ const RatingSchema = new mongoose.Schema({
     ref: 'User',
     required: true // The owner of the food post (cook/provider)
   },
+  targetUserId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
   rating: {
     type: Number,
     required: true,

@@ -20,17 +20,36 @@ const rateFoodPost = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Food post not found' });
     }
 
-    // Verify user was the requester of an accepted or completed transaction
+    const isProvider = foodPost.createdBy.toString() === req.user.id;
+
+    // Find the accepted request for this food post
     const transactionRequest = await Request.findOne({
       foodPostId,
-      requesterId: req.user.id,
       status: 'accepted'
     });
 
-    if (!transactionRequest && foodPost.status !== 'completed' && foodPost.status !== 'reserved') {
+    if (!transactionRequest) {
+      return res.status(400).json({
+        success: false,
+        message: 'No accepted request found for this food post. Cannot submit rating.'
+      });
+    }
+
+    let authorized = false;
+    let targetUserId = null;
+
+    if (isProvider) {
+      authorized = true;
+      targetUserId = transactionRequest.requesterId;
+    } else if (transactionRequest.requesterId.toString() === req.user.id) {
+      authorized = true;
+      targetUserId = foodPost.createdBy;
+    }
+
+    if (!authorized) {
       return res.status(403).json({
         success: false,
-        message: 'You can only rate food posts that you have successfully requested'
+        message: 'You are not authorized to submit a rating for this exchange'
       });
     }
 
@@ -45,21 +64,45 @@ const rateFoodPost = async (req, res) => {
       foodPostId,
       raterId: req.user.id,
       providerId: foodPost.createdBy,
+      targetUserId,
       rating,
       comment: comment || ''
     });
 
-    // Recalculate provider user profile average ratings
-    const providerId = foodPost.createdBy;
-    const providerRatings = await Rating.find({ providerId });
-    const totalRatings = providerRatings.length;
-    const sumRatings = providerRatings.reduce((sum, r) => sum + r.rating, 0);
+    // Recalculate average ratings for the target user who was rated
+    const ratedRatings = await Rating.find({
+      $or: [
+        { targetUserId },
+        { providerId: targetUserId, targetUserId: { $exists: false } }
+      ]
+    });
+    const totalRatings = ratedRatings.length;
+    const sumRatings = ratedRatings.reduce((sum, r) => sum + r.rating, 0);
     const averageRating = totalRatings > 0 ? parseFloat((sumRatings / totalRatings).toFixed(1)) : 0;
 
-    await User.findByIdAndUpdate(providerId, {
+    const ratedUser = await User.findByIdAndUpdate(targetUserId, {
       averageRating,
       totalRatings
-    });
+    }, { new: true });
+
+    // Update Room Rating if the rated user is in a room group
+    if (ratedUser && ratedUser.roomId) {
+      const RoomMember = require('../models/RoomMember');
+      const Room = require('../models/Room');
+      
+      const approvedMembers = await RoomMember.find({ roomId: ratedUser.roomId, status: 'approved' });
+      if (approvedMembers.length > 0) {
+        const memberIds = approvedMembers.map(m => m.userId);
+        const users = await User.find({ _id: { $in: memberIds }, averageRating: { $gt: 0 } });
+        
+        let average = 0;
+        if (users.length > 0) {
+          const sum = users.reduce((acc, u) => acc + u.averageRating, 0);
+          average = parseFloat((sum / users.length).toFixed(1));
+        }
+        await Room.findByIdAndUpdate(ratedUser.roomId, { rating: average });
+      }
+    }
 
     res.status(201).json({
       success: true,
