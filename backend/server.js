@@ -4,11 +4,36 @@ const cors = require('cors');
 const admin = require('firebase-admin');
 require('dotenv').config();
 
-const serviceAccount = require('./config/firebaseServiceAccountKey.json');
+let serviceAccount;
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  try {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  } catch (error) {
+    console.error('Error parsing FIREBASE_SERVICE_ACCOUNT env variable:', error.message);
+  }
+} else if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+  serviceAccount = {
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    // Replace literal '\n' with actual newlines in private key
+    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+  };
+} else {
+  try {
+    serviceAccount = require('./config/firebaseServiceAccountKey.json');
+  } catch (error) {
+    console.warn('Firebase service account key file not found. Falling back to environment variables.');
+  }
+}
+
+if (serviceAccount) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+} else {
+  console.error('CRITICAL ERROR: Firebase Admin SDK could not be initialized due to missing credentials.');
+}
 
 const connectDB = require('./config/db');
 const { initIO } = require('./services/socketService');
