@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
-import { api } from '../services/api';
+import { api, BACKEND_URL } from '../services/api';
 
 const SocketContext = createContext();
 
@@ -36,7 +36,7 @@ export const SocketProvider = ({ children }) => {
     };
     fetchUnreadCount();
 
-    const socketInstance = io('http://localhost:5000', {
+    const socketInstance = io(BACKEND_URL, {
       query: { userId: user.id || user._id }
     });
 

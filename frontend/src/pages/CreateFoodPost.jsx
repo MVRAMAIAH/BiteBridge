@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
@@ -17,8 +17,22 @@ const CreateFoodPost = () => {
     availabilityHours: 4,
     cityName: user?.location?.cityName || ''
   });
+  const [coords, setCoords] = useState(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setCoords([position.coords.longitude, position.coords.latitude]);
+        },
+        (err) => {
+          console.warn('Geolocation capture for post creation failed, using profile location instead.');
+        }
+      );
+    }
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,7 +49,7 @@ const CreateFoodPost = () => {
         price: Number(formData.price),
         availabilityTime: readyTill,
         location: {
-          coordinates: user?.location?.coordinates || [78.4867, 17.3850],
+          coordinates: coords || user?.location?.coordinates || [78.4867, 17.3850],
           cityName: formData.cityName || 'Nearby'
         }
       });
