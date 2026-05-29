@@ -3,16 +3,24 @@ import { api } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { Soup, Trash2, CheckCircle2, Star, Sparkles, Inbox, PlusCircle, Calendar, MessageSquare, AlertCircle, Award, Clock } from 'lucide-react';
+import { Soup, Trash2, CheckCircle2, Star, Sparkles, Inbox, PlusCircle, Calendar, MessageSquare, AlertCircle, Award, Clock, XCircle, User, Phone, MapPin, Package, ArrowRight } from 'lucide-react';
 
 const SharedFood = () => {
   const { t } = useLanguage();
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const navigate = useNavigate();
 
   const [shares, setShares] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [deleteLoading, setDeleteLoading] = useState(null); // stores active deleting foodPostId
+  const [deleteLoading, setDeleteLoading] = useState(null);
+  const [actionLoading, setActionLoading] = useState(null); // for accept/reject/confirm
+
+  // Rating Modal states
+  const [ratingModalPost, setRatingModalPost] = useState(null);
+  const [ratingValue, setRatingValue] = useState(5);
+  const [ratingComment, setRatingComment] = useState('');
+  const [submittingRating, setSubmittingRating] = useState(false);
+  const [ratingTargetUser, setRatingTargetUser] = useState(null);
 
   const fetchMyShares = async () => {
     setLoading(true);
@@ -50,19 +58,337 @@ const SharedFood = () => {
     }
   };
 
-  // Group shares into Active (available / reserved), Past (completed), and Expired
+  const handleManageRequest = async (requestId, status) => {
+    setActionLoading(requestId);
+    try {
+      const res = await api.requests.updateStatus(requestId, status);
+      if (res.success) {
+        alert(`Request ${status} successfully!`);
+        fetchMyShares();
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to update request');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleConfirmHandover = async (requestId, action, foodPost, requester) => {
+    setActionLoading(requestId);
+    try {
+      const res = await api.requests.confirmHandover(requestId, action);
+      if (res.success) {
+        alert(`Successfully confirmed as ${action}!`);
+
+        const updatedReq = res.request;
+        // Auto-open rating modal if both confirmed
+        if (updatedReq.isDeliveredByCook && updatedReq.isReceivedByBuyer && foodPost) {
+          setRatingTargetUser(requester);
+          setRatingModalPost(foodPost);
+        }
+
+        fetchMyShares();
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to confirm handover');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRateSubmit = async (e) => {
+    e.preventDefault();
+    if (!ratingModalPost) return;
+
+    setSubmittingRating(true);
+    try {
+      const res = await api.food.rate(ratingModalPost._id, ratingValue, ratingComment);
+      if (res.success) {
+        alert('Thank you for rating!');
+        setRatingModalPost(null);
+        setRatingValue(5);
+        setRatingComment('');
+        fetchMyShares();
+        refreshProfile();
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to submit rating.');
+    } finally {
+      setSubmittingRating(false);
+    }
+  };
+
+  // Group shares
   const activeShares = shares.filter(s => s.status === 'available' || s.status === 'reserved');
   const pastShares = shares.filter(s => s.status === 'completed');
   const expiredShares = shares.filter(s => s.status === 'expired');
 
   // Compute rating metrics
-  const totalReceivedRatings = shares.reduce((acc, curr) => acc + curr.ratings.length, 0);
+  const totalReceivedRatings = shares.reduce((acc, curr) => acc + (curr.ratings?.length || 0), 0);
   const averageSharesRating = totalReceivedRatings > 0 
-    ? (shares.reduce((sum, curr) => sum + curr.ratings.reduce((s, r) => s + r.rating, 0), 0) / totalReceivedRatings).toFixed(1)
+    ? (shares.reduce((sum, curr) => sum + (curr.ratings || []).reduce((s, r) => s + r.rating, 0), 0) / totalReceivedRatings).toFixed(1)
     : 'N/A';
+
+  // Progress tracker for accepted requests
+  const renderProgressTracker = (req, dish) => {
+    if (req.status !== 'accepted') return null;
+
+    const isDelivered = req.isDeliveredByCook;
+    const isReceived = req.isReceivedByBuyer;
+    const isCompleted = isDelivered && isReceived;
+
+    let percent = 33;
+    if (isDelivered || isReceived) percent = 66;
+    if (isCompleted) percent = 100;
+
+    return (
+      <div className="mt-3 p-4 rounded-2xl bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-850 flex flex-col gap-3 w-full">
+        <div className="flex justify-between items-center">
+          <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            Handover Status
+          </span>
+          <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full ${
+            isCompleted 
+              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400' 
+              : 'bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400'
+          }`}>
+            {isCompleted 
+              ? 'Exchange Completed 🎉' 
+              : isDelivered 
+              ? 'Delivered — Waiting for Buyer ⌛' 
+              : isReceived 
+              ? 'Received — Waiting for You ⌛' 
+              : 'Ready for Exchange 🍛'}
+          </span>
+        </div>
+
+        <div className="w-full h-2 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden border border-slate-200/40 dark:border-slate-800">
+          <div 
+            className={`h-full rounded-full transition-all duration-500 ${isCompleted ? 'bg-emerald-500' : 'bg-indigo-500'}`} 
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+
+        <div className="grid grid-cols-3 text-center text-[9px] font-bold text-slate-400 select-none">
+          <div className="text-emerald-500 dark:text-emerald-400">1. Approved</div>
+          <div className={isDelivered ? 'text-emerald-500 dark:text-emerald-400 font-extrabold' : ''}>2. Handed Over</div>
+          <div className={isReceived ? 'text-emerald-500 dark:text-emerald-400 font-extrabold' : ''}>3. Received</div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-slate-100 dark:border-slate-900 justify-between sm:items-center">
+          <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold flex flex-col gap-0.5">
+            <span>Cook: {isDelivered ? '✅ Confirmed Handed Over' : '❌ Needs Delivery Confirmation'}</span>
+            <span>Buyer: {isReceived ? '✅ Confirmed Received' : '⌛ Waiting for Buyer Receipt'}</span>
+          </div>
+          {!isDelivered && (
+            <button
+              onClick={() => handleConfirmHandover(req._id, 'delivered', dish, req.requesterId)}
+              disabled={actionLoading === req._id}
+              className="bg-indigo-500 hover:bg-indigo-600 text-white font-extrabold px-3 py-1.5 rounded-xl text-xs active:scale-95 transition-all shadow-md shadow-indigo-500/10 cursor-pointer disabled:opacity-50"
+            >
+              {actionLoading === req._id ? 'Confirming...' : 'Confirm Delivered ✓'}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Render requests section for a dish
+  const renderDishRequests = (dish) => {
+    const requests = dish.requests || [];
+    const pendingRequests = requests.filter(r => r.status === 'pending');
+    const acceptedRequests = requests.filter(r => r.status === 'accepted');
+    const rejectedRequests = requests.filter(r => r.status === 'rejected');
+
+    if (requests.length === 0) {
+      return (
+        <div className="mt-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-850 text-center">
+          <p className="text-[11px] text-slate-400 italic font-semibold">No requests received yet for this dish.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="mt-3 flex flex-col gap-3">
+        {/* Pending Requests — need action */}
+        {pendingRequests.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1">
+              <AlertCircle className="w-3.5 h-3.5" />
+              <span>{pendingRequests.length} Pending Request{pendingRequests.length > 1 ? 's' : ''} — Action Required</span>
+            </span>
+            {pendingRequests.map(req => (
+              <div key={req._id} className="p-3.5 rounded-2xl border border-amber-200/50 dark:border-amber-900/30 bg-amber-50/30 dark:bg-amber-950/5 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={req.requesterId?.profileImage || 'https://api.dicebear.com/7.x/adventurer/svg'}
+                    className="w-9 h-9 rounded-full border-2 border-amber-300 dark:border-amber-700 object-cover"
+                    alt="Requester"
+                  />
+                  <div>
+                    <p className="text-xs font-extrabold text-slate-800 dark:text-white capitalize">{req.requesterId?.name || 'Neighbor'}</p>
+                    <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-500 font-semibold">
+                      {req.requesterId?.location?.cityName && (
+                        <span className="flex items-center gap-0.5"><MapPin className="w-3 h-3" />{req.requesterId.location.cityName}</span>
+                      )}
+                      {req.requesterId?.mobileNumber && (
+                        <span className="flex items-center gap-0.5"><Phone className="w-3 h-3" />{req.requesterId.mobileNumber}</span>
+                      )}
+                    </div>
+                    {req.message && (
+                      <p className="text-[10px] text-slate-500 italic mt-1 leading-relaxed">"{req.message}"</p>
+                    )}
+                    <p className="text-[9px] text-slate-400 font-semibold mt-1 flex items-center gap-1">
+                      <Package className="w-3 h-3" /> Qty: {req.quantityRequested || 1} • {new Date(req.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleManageRequest(req._id, 'accepted')}
+                    disabled={actionLoading === req._id}
+                    className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1 active:scale-95 transition-all shadow-md shadow-emerald-500/10 cursor-pointer disabled:opacity-50"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Accept</span>
+                  </button>
+                  <button
+                    onClick={() => handleManageRequest(req._id, 'rejected')}
+                    disabled={actionLoading === req._id}
+                    className="bg-slate-100 hover:bg-rose-50 dark:bg-slate-800 dark:hover:bg-rose-950/20 text-slate-600 hover:text-rose-500 font-bold px-3 py-1.5 rounded-xl text-xs transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    <XCircle className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Accepted Requests — with handover progress */}
+        {acceptedRequests.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>{acceptedRequests.length} Accepted — In Progress</span>
+            </span>
+            {acceptedRequests.map(req => (
+              <div key={req._id} className="p-3.5 rounded-2xl border border-emerald-200/50 dark:border-emerald-900/30 bg-emerald-50/20 dark:bg-emerald-950/5 flex flex-col gap-2">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={req.requesterId?.profileImage || 'https://api.dicebear.com/7.x/adventurer/svg'}
+                    className="w-8 h-8 rounded-full border-2 border-emerald-300 dark:border-emerald-700 object-cover"
+                    alt="Buyer"
+                  />
+                  <div>
+                    <p className="text-xs font-extrabold text-slate-800 dark:text-white capitalize">{req.requesterId?.name || 'Buyer'}</p>
+                    <div className="flex items-center gap-2 text-[10px] text-slate-500 font-semibold">
+                      {req.requesterId?.mobileNumber && (
+                        <span className="flex items-center gap-0.5"><Phone className="w-3 h-3" />📞 {req.requesterId.mobileNumber}</span>
+                      )}
+                      <span className="flex items-center gap-0.5"><Package className="w-3 h-3" /> Qty: {req.quantityRequested || 1}</span>
+                    </div>
+                  </div>
+                </div>
+                {renderProgressTracker(req, dish)}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Rejected Requests — collapsed small */}
+        {rejectedRequests.length > 0 && (
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-900/40">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              {rejectedRequests.length} Rejected
+            </span>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {rejectedRequests.map(req => (
+                <span key={req._id} className="text-[10px] text-slate-400 bg-slate-50 dark:bg-slate-900/30 px-2 py-0.5 rounded-full border border-slate-100 dark:border-slate-850 line-through">
+                  {req.requesterId?.name || 'User'}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 flex flex-col gap-8">
+
+      {/* Rating Modal */}
+      {ratingModalPost && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white dark:bg-slate-950 p-6 sm:p-8 rounded-3xl w-full max-w-md shadow-2xl border border-slate-100 dark:border-slate-900 flex flex-col gap-5">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="font-extrabold text-lg text-slate-800 dark:text-white">
+                  Rate Exchange Partner
+                </h3>
+                <p className="text-xs text-slate-500 font-semibold mt-1">
+                  How was your exchange with "{ratingTargetUser?.name || 'Neighbor'}" for "{ratingModalPost.title}"?
+                </p>
+              </div>
+              <button
+                onClick={() => setRatingModalPost(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-white text-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleRateSubmit} className="flex flex-col gap-4">
+              <div className="flex flex-col items-center py-2">
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setRatingValue(star)}
+                      className="transition-transform active:scale-90 hover:scale-110"
+                    >
+                      <Star
+                        className={`w-8 h-8 ${
+                          star <= ratingValue
+                            ? 'text-amber-400 fill-amber-400'
+                            : 'text-slate-200 dark:text-slate-800'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+                <span className="text-xs font-bold text-slate-500 mt-2">
+                  {ratingValue === 5 ? 'Perfect Exchange!' : ratingValue === 4 ? 'Very Friendly' : ratingValue === 3 ? 'Good' : ratingValue === 2 ? 'Fair' : 'Needs Improvement'}
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">
+                  Add a comment
+                </label>
+                <textarea
+                  value={ratingComment}
+                  onChange={(e) => setRatingComment(e.target.value)}
+                  placeholder="Share feedback on exchange timing, communication, or food quality..."
+                  rows={3}
+                  className="w-full p-3 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl focus:outline-none focus:border-spice-500 text-slate-700 dark:text-white font-medium"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={submittingRating}
+                className="w-full bg-spice-500 hover:bg-spice-600 text-white font-extrabold py-3 rounded-2xl transition-colors shadow-md shadow-spice-500/10"
+              >
+                {submittingRating ? 'Submitting Rating...' : 'Submit Rating'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
       
       {/* Top Banner Control Section */}
       <div className="glass-panel p-6 sm:p-8 rounded-3xl glow-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 border border-slate-100 dark:border-slate-850">
@@ -72,7 +398,7 @@ const SharedFood = () => {
             <span>Shared Food & Culinary Kitchen</span>
           </h2>
           <p className="text-slate-500 dark:text-slate-400 text-sm sm:text-base font-medium">
-            Manage your homemade sharing listings, track active handovers, and read reviews left by neighbors!
+            Manage listings, accept requests, track handovers, and read reviews — all in one place!
           </p>
         </div>
 
@@ -133,12 +459,12 @@ const SharedFood = () => {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* Left Column: Active Shares (Sales) */}
+          {/* Left Column: Active Shares with Request Management */}
           <div className="lg:col-span-2 flex flex-col gap-6">
             <div className="glass-panel p-6 rounded-3xl border border-slate-100 dark:border-slate-850 flex flex-col gap-5">
               <h3 className="font-extrabold text-lg text-slate-800 dark:text-white flex items-center gap-2 border-b border-slate-100 dark:border-slate-850 pb-3">
                 <Inbox className="w-5 h-5 text-indigo-500" />
-                <span>Active Listings & In-Progress Handovers</span>
+                <span>Active Listings & Request Management</span>
               </h3>
 
               {activeShares.length === 0 ? (
@@ -148,43 +474,65 @@ const SharedFood = () => {
                   <Link to="/create-post" className="text-xs text-spice-500 hover:underline font-extrabold">Share one now ➔</Link>
                 </div>
               ) : (
-                <div className="flex flex-col gap-4">
-                  {activeShares.map((dish) => (
-                    <div key={dish._id} className="p-5 rounded-2xl border border-slate-150 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-900/10 flex flex-col gap-4">
-                      <div className="flex justify-between items-start gap-4">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1.5">
-                            <span className={`inline-block text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                              dish.status === 'available'
-                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400 border border-emerald-205/10'
-                                : 'bg-amber-100 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400 border border-amber-205/10'
-                            }`}>
-                              {dish.status}
-                            </span>
-                            <span className="text-[10px] text-slate-450 font-semibold flex items-center gap-1">
-                              <Calendar className="w-3.5 h-3.5" />
-                              <span>{new Date(dish.createdAt).toLocaleDateString()}</span>
-                            </span>
+                <div className="flex flex-col gap-5">
+                  {activeShares.map((dish) => {
+                    const pendingCount = (dish.requests || []).filter(r => r.status === 'pending').length;
+                    const acceptedCount = (dish.requests || []).filter(r => r.status === 'accepted').length;
+                    
+                    return (
+                      <div key={dish._id} className="p-5 rounded-2xl border border-slate-150 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-900/10 flex flex-col gap-3">
+                        {/* Dish Header */}
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                              <span className={`inline-block text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                                dish.status === 'available'
+                                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400 border border-emerald-205/10'
+                                  : 'bg-amber-100 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400 border border-amber-205/10'
+                              }`}>
+                                {dish.status === 'reserved' ? 'Sold Out' : dish.status}
+                              </span>
+                              {pendingCount > 0 && (
+                                <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500 text-white animate-pulse">
+                                  <AlertCircle className="w-3 h-3" />
+                                  {pendingCount} pending
+                                </span>
+                              )}
+                              {acceptedCount > 0 && (
+                                <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  {acceptedCount} accepted
+                                </span>
+                              )}
+                              <span className="text-[10px] text-slate-450 font-semibold flex items-center gap-1">
+                                <Calendar className="w-3.5 h-3.5" />
+                                <span>{new Date(dish.createdAt).toLocaleDateString()}</span>
+                              </span>
+                            </div>
+                            <h4 className="font-extrabold text-md text-slate-850 dark:text-white capitalize">{dish.title}</h4>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{dish.description || 'Homemade delicious curry shared with neighbors.'}</p>
+                            <div className="flex gap-4 mt-3 text-[11px] font-bold text-slate-450 border-t border-slate-100 dark:border-slate-900/40 pt-2.5">
+                              <span>Quantity: <strong className="text-slate-700 dark:text-slate-350 capitalize">{dish.quantity}</strong></span>
+                              <span>Cost Share: <strong className="text-slate-700 dark:text-slate-350">{dish.price > 0 ? `₹${dish.price}` : 'FREE'}</strong></span>
+                              <span>Expires: <strong className="text-slate-700 dark:text-slate-350">{new Date(dish.availabilityTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong></span>
+                            </div>
                           </div>
-                          <h4 className="font-extrabold text-md text-slate-850 dark:text-white capitalize">{dish.title}</h4>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{dish.description || 'Homemade delicious curry shared with neighbors.'}</p>
-                          <div className="flex gap-4 mt-3 text-[11px] font-bold text-slate-450 border-t border-slate-100 dark:border-slate-900/40 pt-2.5">
-                            <span>Quantity: <strong className="text-slate-700 dark:text-slate-350 capitalize">{dish.quantity}</strong></span>
-                            <span>Cost Share: <strong className="text-slate-700 dark:text-slate-350">{dish.price > 0 ? `₹${dish.price}` : 'FREE'}</strong></span>
-                          </div>
+
+                          <button
+                            onClick={() => handleDeleteShare(dish._id)}
+                            disabled={deleteLoading === dish._id}
+                            className="p-2.5 bg-rose-50 hover:bg-rose-500 hover:text-white dark:bg-rose-950/20 text-rose-500 dark:hover:bg-rose-600 rounded-xl transition-all cursor-pointer shadow-sm active:scale-95"
+                            title="Delete Listing & Notify Requesters"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
 
-                        <button
-                          onClick={() => handleDeleteShare(dish._id)}
-                          disabled={deleteLoading === dish._id}
-                          className="p-2.5 bg-rose-50 hover:bg-rose-500 hover:text-white dark:bg-rose-950/20 text-rose-500 dark:hover:bg-rose-600 rounded-xl transition-all cursor-pointer shadow-sm active:scale-95"
-                          title="Delete Listings & Notify Requesters"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {/* Inline Requests Section */}
+                        {renderDishRequests(dish)}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -209,6 +557,19 @@ const SharedFood = () => {
                         </span>
                       </div>
                       <p className="text-xs text-slate-500 dark:text-slate-450 leading-relaxed">{dish.description}</p>
+                      {/* Show accepted buyers for completed dishes */}
+                      {(dish.requests || []).filter(r => r.status === 'accepted').length > 0 && (
+                        <div className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-900/40">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase">Served to:</span>
+                          <div className="flex gap-1.5">
+                            {(dish.requests || []).filter(r => r.status === 'accepted').map(req => (
+                              <span key={req._id} className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-full">
+                                {req.requesterId?.name || 'Neighbor'}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -279,7 +640,7 @@ const SharedFood = () => {
                         <div className="bg-slate-50 dark:bg-slate-900/50 p-2 rounded-xl border border-slate-100/50 dark:border-slate-850 flex items-center justify-between">
                           <span className="text-[11px] font-extrabold text-slate-800 dark:text-slate-300 capitalize truncate">{post.title}</span>
                           <span className="text-[9px] bg-amber-100 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400 px-2 py-0.5 rounded-full font-bold">
-                            ⭐ {post.ratings.reduce((sum, r) => sum + r.rating, 0) / post.ratings.length} / 5
+                            ⭐ {(post.ratings.reduce((sum, r) => sum + r.rating, 0) / post.ratings.length).toFixed(1)} / 5
                           </span>
                         </div>
 

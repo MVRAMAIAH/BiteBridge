@@ -346,9 +346,24 @@ const getMySharedFoodPosts = async (req, res) => {
       ratingsMap[postId].push(r);
     });
 
+    // Fetch all incoming requests for the cook's food posts
+    const requests = await Request.find({ foodPostId: { $in: postIds } })
+      .populate('requesterId', 'name email profileImage location mobileNumber')
+      .sort({ createdAt: -1 });
+
+    const requestsMap = {};
+    requests.forEach(r => {
+      const postId = r.foodPostId.toString();
+      if (!requestsMap[postId]) {
+        requestsMap[postId] = [];
+      }
+      requestsMap[postId].push(r);
+    });
+
     const postsWithRatings = posts.map(post => {
       const postObj = post.toObject();
       postObj.ratings = ratingsMap[post._id.toString()] || [];
+      postObj.requests = requestsMap[post._id.toString()] || [];
       return postObj;
     });
 
