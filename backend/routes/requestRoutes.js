@@ -3,7 +3,8 @@ const router = express.Router();
 const {
   createRequest,
   updateRequestStatus,
-  getRequests
+  getRequests,
+  confirmHandover
 } = require('../controllers/requestController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -13,5 +14,8 @@ router.route('/')
 
 router.route('/:id')
   .put(protect, updateRequestStatus);
+
+router.route('/:id/confirm')
+  .put(protect, confirmHandover);
 
 module.exports = router;

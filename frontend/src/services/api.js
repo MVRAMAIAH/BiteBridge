@@ -90,6 +90,12 @@ export const api = {
         body: JSON.stringify({ status })
       }).then(handleResponse),
 
+    delete: (id) =>
+      fetch(`${API_URL}/food/${id}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+      }).then(handleResponse),
+
     rate: (foodPostId, rating, comment) =>
       fetch(`${API_URL}/food/${foodPostId}/rate`, {
         method: 'POST',
@@ -162,6 +168,13 @@ export const api = {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify({ status })
+      }).then(handleResponse),
+
+    confirmHandover: (id, action) =>
+      fetch(`${API_URL}/requests/${id}/confirm`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify({ action })
       }).then(handleResponse)
   },
 

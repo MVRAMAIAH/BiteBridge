@@ -24,6 +24,14 @@ const RequestSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  isDeliveredByCook: {
+    type: Boolean,
+    default: false
+  },
+  isReceivedByBuyer: {
+    type: Boolean,
+    default: false
+  },
   createdAt: {
     type: Date,
     default: Date.now

@@ -15,6 +15,25 @@ const FeedCard = ({ post, onRequested }) => {
   const [chatOpen, setChatOpen] = useState(false);
 
   const isOwnPost = post.createdBy?._id === user?.id || post.createdBy === user?.id;
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const handleDeletePost = async () => {
+    if (!window.confirm('Are you sure you want to delete this shared dish? Active request partners will be notified with an apology message.')) {
+      return;
+    }
+    setDeleteLoading(true);
+    try {
+      const res = await api.food.delete(post._id);
+      if (res.success) {
+        alert('Dish successfully deleted, and active requesters have been notified!');
+        if (onRequested) onRequested(); // Refresh Dashboard data
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to delete dish');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   const handleRequestSubmit = async (e) => {
     e.preventDefault();
@@ -160,8 +179,17 @@ const FeedCard = ({ post, onRequested }) => {
       )}
 
       {isOwnPost && (
-        <div className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 p-2.5 rounded-xl text-center text-xs font-semibold">
-          Your active share listing
+        <div className="flex flex-col gap-2">
+          <div className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 p-2 py-1.5 rounded-xl text-center text-xs font-semibold select-none">
+            Your active share listing
+          </div>
+          <button
+            onClick={handleDeletePost}
+            disabled={deleteLoading}
+            className="w-full bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl text-xs transition-colors cursor-pointer active:scale-98 shadow-sm flex items-center justify-center gap-1"
+          >
+            <span>{deleteLoading ? 'Deleting...' : 'Delete Listing'}</span>
+          </button>
         </div>
       )}
 

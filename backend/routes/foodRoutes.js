@@ -5,7 +5,8 @@ const {
   getFoodPosts,
   getFoodPostById,
   updateFoodPost,
-  getPublicFoodPosts
+  getPublicFoodPosts,
+  deleteFoodPost
 } = require('../controllers/foodPostController');
 const { protect } = require('../middleware/authMiddleware');
 const { rateFoodPost, getMyRatingForFoodPost } = require('../controllers/ratingController');
@@ -18,7 +19,8 @@ router.route('/')
 
 router.route('/:id')
   .get(protect, getFoodPostById)
-  .put(protect, updateFoodPost);
+  .put(protect, updateFoodPost)
+  .delete(protect, deleteFoodPost);
 
 router.route('/:foodPostId/rate')
   .post(protect, rateFoodPost);

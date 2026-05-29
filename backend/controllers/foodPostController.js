@@ -274,10 +274,56 @@ const getPublicFoodPosts = async (req, res) => {
   }
 };
 
+// @desc    Delete Food Post & Notify active requesters
+// @route   DELETE /api/food/:id
+// @access  Private
+const deleteFoodPost = async (req, res) => {
+  try {
+    const post = await FoodPost.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ success: false, message: 'Food post not found' });
+    }
+
+    // Auth validation
+    if (post.createdBy.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Not authorized to delete this post' });
+    }
+
+    // Find all active requests for this food post to notify them
+    const activeRequests = await Request.find({ foodPostId: req.params.id });
+
+    for (const request of activeRequests) {
+      const notif = await Notification.create({
+        recipientId: request.requesterId,
+        senderId: req.user.id,
+        type: 'food_cancelled',
+        referenceId: request._id,
+        onModel: 'Request',
+        message: `Sorry for the inconvenience, the curry dish "${post.title}" has been cancelled/deleted by the creator.`
+      });
+
+      const io = getIO();
+      if (io) {
+        io.to(request.requesterId.toString()).emit('notification', notif);
+      }
+    }
+
+    // Clean up database: delete the post and delete any associated requests
+    await Request.deleteMany({ foodPostId: req.params.id });
+    await FoodPost.findByIdAndDelete(req.params.id);
+
+    res.json({ success: true, message: 'Food post deleted and active requesters notified.' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 module.exports = {
   createFoodPost,
   getFoodPosts,
   getFoodPostById,
   updateFoodPost,
-  getPublicFoodPosts
+  getPublicFoodPosts,
+  deleteFoodPost
 };
