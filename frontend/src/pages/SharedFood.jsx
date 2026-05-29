@@ -3,7 +3,7 @@ import { api } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { Soup, Trash2, CheckCircle2, Star, Sparkles, Inbox, PlusCircle, Calendar, MessageSquare, AlertCircle, Award } from 'lucide-react';
+import { Soup, Trash2, CheckCircle2, Star, Sparkles, Inbox, PlusCircle, Calendar, MessageSquare, AlertCircle, Award, Clock } from 'lucide-react';
 
 const SharedFood = () => {
   const { t } = useLanguage();
@@ -50,9 +50,10 @@ const SharedFood = () => {
     }
   };
 
-  // Group shares into Active (available / reserved) and Past (completed)
+  // Group shares into Active (available / reserved), Past (completed), and Expired
   const activeShares = shares.filter(s => s.status === 'available' || s.status === 'reserved');
   const pastShares = shares.filter(s => s.status === 'completed');
+  const expiredShares = shares.filter(s => s.status === 'expired');
 
   // Compute rating metrics
   const totalReceivedRatings = shares.reduce((acc, curr) => acc + curr.ratings.length, 0);
@@ -85,7 +86,7 @@ const SharedFood = () => {
       </div>
 
       {/* Stats Summary Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="glass-panel p-5 rounded-2xl border border-slate-100 dark:border-slate-850 flex items-center gap-4">
           <div className="p-3 bg-spice-100 dark:bg-spice-950/20 rounded-xl">
             <Soup className="w-6 h-6 text-spice-500" />
@@ -101,7 +102,16 @@ const SharedFood = () => {
           </div>
           <div>
             <p className="text-2xl font-extrabold text-slate-800 dark:text-white">{pastShares.length}</p>
-            <p className="text-[10px] font-bold text-slate-450 uppercase tracking-wider">Dishes Served (Past)</p>
+            <p className="text-[10px] font-bold text-slate-450 uppercase tracking-wider">Dishes Served</p>
+          </div>
+        </div>
+        <div className="glass-panel p-5 rounded-2xl border border-slate-100 dark:border-slate-850 flex items-center gap-4">
+          <div className="p-3 bg-rose-100 dark:bg-rose-950/20 rounded-xl">
+            <Clock className="w-6 h-6 text-rose-500" />
+          </div>
+          <div>
+            <p className="text-2xl font-extrabold text-slate-800 dark:text-white">{expiredShares.length}</p>
+            <p className="text-[10px] font-bold text-slate-450 uppercase tracking-wider">Expired</p>
           </div>
         </div>
         <div className="glass-panel p-5 rounded-2xl border border-slate-100 dark:border-slate-850 flex items-center gap-4">
@@ -110,7 +120,7 @@ const SharedFood = () => {
           </div>
           <div>
             <p className="text-2xl font-extrabold text-slate-800 dark:text-white">{averageSharesRating} / 5</p>
-            <p className="text-[10px] font-bold text-slate-450 uppercase tracking-wider">Rating Received ({totalReceivedRatings} Reviews)</p>
+            <p className="text-[10px] font-bold text-slate-450 uppercase tracking-wider">Rating ({totalReceivedRatings} Reviews)</p>
           </div>
         </div>
       </div>
@@ -204,6 +214,43 @@ const SharedFood = () => {
                 </div>
               )}
             </div>
+
+            {/* Expired Dishes Section */}
+            {expiredShares.length > 0 && (
+              <div className="glass-panel p-6 rounded-3xl border border-slate-100 dark:border-slate-850 flex flex-col gap-5">
+                <h3 className="font-extrabold text-lg text-slate-800 dark:text-white flex items-center gap-2 border-b border-slate-100 dark:border-slate-850 pb-3">
+                  <Clock className="w-5 h-5 text-rose-500" />
+                  <span>Expired Listings</span>
+                  <span className="ml-auto text-[10px] font-bold bg-rose-100 text-rose-600 dark:bg-rose-950/20 dark:text-rose-400 px-2.5 py-0.5 rounded-full">
+                    {expiredShares.length} expired
+                  </span>
+                </h3>
+
+                <div className="flex flex-col gap-4">
+                  {expiredShares.map((dish) => (
+                    <div key={dish._id} className="p-4 rounded-2xl border border-rose-150 dark:border-rose-900/30 bg-rose-50/20 dark:bg-rose-950/5 flex flex-col gap-3 opacity-75">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-block text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-rose-100 text-rose-600 dark:bg-rose-950/20 dark:text-rose-400 border border-rose-200/30">
+                            Expired
+                          </span>
+                          <h4 className="font-extrabold text-sm text-slate-600 dark:text-slate-400 capitalize line-through">{dish.title}</h4>
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5" />
+                          <span>{new Date(dish.availabilityTime).toLocaleString()}</span>
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 dark:text-slate-500 leading-relaxed">{dish.description || 'No description provided.'}</p>
+                      <div className="flex gap-4 text-[11px] font-bold text-slate-400 border-t border-rose-100 dark:border-rose-900/20 pt-2">
+                        <span>Qty: <strong className="text-slate-500 capitalize">{dish.quantity}</strong></span>
+                        <span>Price: <strong className="text-slate-500">{dish.price > 0 ? `₹${dish.price}` : 'FREE'}</strong></span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right Column: Feedback & Ratings Dynamics */}

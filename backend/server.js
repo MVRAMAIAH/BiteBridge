@@ -74,3 +74,64 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`BiteBridge server running on port ${PORT}`);
 });
+
+// ─── Auto-Expire Cron: check every 5 minutes for expired food posts ───
+const FoodPost = require('./models/FoodPost');
+const Request = require('./models/Request');
+const Notification = require('./models/Notification');
+const { getIO } = require('./services/socketService');
+
+const AUTO_EXPIRE_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
+const autoExpireFoodPosts = async () => {
+  try {
+    const now = new Date();
+    // Find all available posts whose availabilityTime has passed
+    const expiredPosts = await FoodPost.find({
+      status: 'available',
+      availabilityTime: { $lt: now }
+    });
+
+    if (expiredPosts.length === 0) return;
+
+    console.log(`[Auto-Expire] Found ${expiredPosts.length} expired food post(s). Processing...`);
+
+    for (const post of expiredPosts) {
+      post.status = 'expired';
+      await post.save();
+
+      // Notify active requesters (pending requests) about the expiry
+      const activeRequests = await Request.find({
+        foodPostId: post._id,
+        status: 'pending'
+      });
+
+      for (const request of activeRequests) {
+        request.status = 'rejected';
+        await request.save();
+
+        const notif = await Notification.create({
+          recipientId: request.requesterId,
+          senderId: post.createdBy,
+          type: 'food_expired',
+          referenceId: request._id,
+          onModel: 'Request',
+          message: `The curry dish "${post.title}" has expired and is no longer available. Sorry for the inconvenience!`
+        });
+
+        const io = getIO();
+        if (io) {
+          io.to(request.requesterId.toString()).emit('notification', notif);
+        }
+      }
+    }
+
+    console.log(`[Auto-Expire] Successfully expired ${expiredPosts.length} post(s).`);
+  } catch (err) {
+    console.error('[Auto-Expire] Error during auto-expiry check:', err);
+  }
+};
+
+// Run once on startup after a short delay, then every 5 minutes
+setTimeout(autoExpireFoodPosts, 10000);
+setInterval(autoExpireFoodPosts, AUTO_EXPIRE_INTERVAL_MS);

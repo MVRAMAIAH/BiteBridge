@@ -52,7 +52,7 @@ const FoodPostSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['available', 'reserved', 'completed'],
+    enum: ['available', 'reserved', 'completed', 'expired'],
     default: 'available'
   },
   createdAt: {

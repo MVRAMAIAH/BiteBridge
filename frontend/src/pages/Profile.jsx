@@ -121,11 +121,27 @@ const Profile = () => {
     }
   };
 
-  const handleConfirmHandover = async (id, action) => {
+  const handleConfirmHandover = async (id, action, foodPost = null, requester = null) => {
     try {
       const res = await api.requests.confirmHandover(id, action);
       if (res.success) {
         alert(`Successfully confirmed as ${action}!`);
+        
+        const updatedReq = res.request;
+        // If both cook and buyer have confirmed, auto-open rating modal
+        if (updatedReq.isDeliveredByCook && updatedReq.isReceivedByBuyer && foodPost) {
+          if (action === 'delivered') {
+            // Cook just confirmed delivery → rate the buyer
+            setRatingType('buyer');
+            setRatingTargetUser(requester);
+            setRatingModalPost(foodPost);
+          } else if (action === 'received') {
+            // Buyer just confirmed receipt → rate the cook/food
+            setRatingType('cook');
+            setRatingModalPost(foodPost);
+          }
+        }
+        
         fetchRequests();
       }
     } catch (err) {
@@ -187,7 +203,7 @@ const Profile = () => {
               </div>
               {!isDelivered && (
                 <button
-                  onClick={() => handleConfirmHandover(req._id, 'delivered')}
+                  onClick={() => handleConfirmHandover(req._id, 'delivered', req.foodPostId, req.requesterId)}
                   className="bg-indigo-500 hover:bg-indigo-600 text-white font-extrabold px-3 py-1.5 rounded-xl text-xs active:scale-95 transition-all shadow-md shadow-indigo-500/10 cursor-pointer"
                 >
                   Confirm Delivered
@@ -202,7 +218,7 @@ const Profile = () => {
               </div>
               {!isReceived && (
                 <button
-                  onClick={() => handleConfirmHandover(req._id, 'received')}
+                  onClick={() => handleConfirmHandover(req._id, 'received', req.foodPostId)}
                   className="bg-indigo-500 hover:bg-indigo-600 text-white font-extrabold px-3 py-1.5 rounded-xl text-xs active:scale-95 transition-all shadow-md shadow-indigo-500/10 cursor-pointer"
                 >
                   Confirm Received

@@ -13,7 +13,7 @@ const NotificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['new_food_post_nearby', 'request_received', 'request_status', 'room_join_request', 'room_approval', 'food_cancelled', 'exchange_completed'],
+    enum: ['new_food_post_nearby', 'request_received', 'request_status', 'room_join_request', 'room_approval', 'food_cancelled', 'exchange_completed', 'food_expired'],
     required: true
   },
   referenceId: {
