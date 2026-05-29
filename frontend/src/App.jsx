@@ -16,6 +16,7 @@ import RoomDetails from './pages/RoomDetails';
 import NotificationsPage from './pages/NotificationsPage';
 import Profile from './pages/Profile';
 import Onboarding from './pages/Onboarding';
+import SharedFood from './pages/SharedFood';
 
 // Route protector for secure pages
 const ProtectedRoute = ({ children }) => {
@@ -94,6 +95,12 @@ const AppRoutes = () => {
           <Route path="/profile" element={
             <ProtectedRoute>
               <Profile />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/my-shares" element={
+            <ProtectedRoute>
+              <SharedFood />
             </ProtectedRoute>
           } />
 

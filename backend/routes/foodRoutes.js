@@ -6,12 +6,14 @@ const {
   getFoodPostById,
   updateFoodPost,
   getPublicFoodPosts,
-  deleteFoodPost
+  deleteFoodPost,
+  getMySharedFoodPosts
 } = require('../controllers/foodPostController');
 const { protect } = require('../middleware/authMiddleware');
 const { rateFoodPost, getMyRatingForFoodPost } = require('../controllers/ratingController');
 
 router.get('/public', getPublicFoodPosts);
+router.get('/my-shares', protect, getMySharedFoodPosts);
 
 router.route('/')
   .post(protect, createFoodPost)

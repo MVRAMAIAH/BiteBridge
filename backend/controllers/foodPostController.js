@@ -2,7 +2,9 @@ const FoodPost = require('../models/FoodPost');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 const Request = require('../models/Request');
+const Rating = require('../models/Rating');
 const { getIO } = require('../services/socketService');
+
 
 // @desc    Create a new Food Post
 // @route   POST /api/food
@@ -319,11 +321,54 @@ const deleteFoodPost = async (req, res) => {
   }
 };
 
+// @desc    Get all food posts shared by user with received ratings
+// @route   GET /api/food/my-shares
+// @access  Private
+const getMySharedFoodPosts = async (req, res) => {
+  try {
+    const posts = await FoodPost.find({ createdBy: req.user.id })
+      .populate('roomId', 'name')
+      .sort({ createdAt: -1 });
+
+    const postIds = posts.map(p => p._id);
+
+    // Fetch all ratings left by buyers for these specific food posts
+    const ratings = await Rating.find({ foodPostId: { $in: postIds }, targetUserId: req.user.id })
+      .populate('raterId', 'name email profileImage')
+      .sort({ createdAt: -1 });
+
+    const ratingsMap = {};
+    ratings.forEach(r => {
+      const postId = r.foodPostId.toString();
+      if (!ratingsMap[postId]) {
+        ratingsMap[postId] = [];
+      }
+      ratingsMap[postId].push(r);
+    });
+
+    const postsWithRatings = posts.map(post => {
+      const postObj = post.toObject();
+      postObj.ratings = ratingsMap[post._id.toString()] || [];
+      return postObj;
+    });
+
+    res.json({
+      success: true,
+      count: postsWithRatings.length,
+      foodPosts: postsWithRatings
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 module.exports = {
   createFoodPost,
   getFoodPosts,
   getFoodPostById,
   updateFoodPost,
   getPublicFoodPosts,
-  deleteFoodPost
+  deleteFoodPost,
+  getMySharedFoodPosts
 };

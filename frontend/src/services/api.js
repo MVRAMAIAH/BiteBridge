@@ -106,6 +106,11 @@ export const api = {
     getMyRating: (foodPostId) =>
       fetch(`${API_URL}/food/${foodPostId}/my-rating`, {
         headers: getHeaders()
+      }).then(handleResponse),
+
+    getMyShares: () =>
+      fetch(`${API_URL}/food/my-shares`, {
+        headers: getHeaders()
       }).then(handleResponse)
   },
 

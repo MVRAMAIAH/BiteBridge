@@ -55,6 +55,10 @@ const Navbar = () => {
                 </span>
               )}
             </Link>
+            <Link to="/my-shares" className={`flex items-center gap-1.5 font-medium text-sm transition-colors ${isActive('/my-shares') ? 'text-spice-500' : 'text-slate-600 dark:text-slate-300 hover:text-spice-500'}`}>
+              <Soup className="w-4 h-4" />
+              <span>Shared Food</span>
+            </Link>
             <Link to="/profile" className={`flex items-center gap-1.5 font-medium text-sm transition-colors ${isActive('/profile') ? 'text-spice-500' : 'text-slate-600 dark:text-slate-300 hover:text-spice-500'}`}>
               <User className="w-4 h-4" />
               <span>{t('profile')}</span>
@@ -67,20 +71,13 @@ const Navbar = () => {
           <LanguageSwitcher />
           <ThemeToggle />
 
-          {user ? (
+          {user && (
             <button
               onClick={handleLogout}
               className="hidden md:flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-semibold hover:bg-red-500 hover:text-white dark:hover:bg-red-600 transition-colors"
             >
               <LogOut className="w-4 h-4" />
               <span>{t('logout')}</span>
-            </button>
-          ) : (
-            <button
-              onClick={() => navigate('/')}
-              className="hidden md:block bg-spice-500 hover:bg-spice-600 text-white px-4 py-1.5 rounded-lg font-bold text-sm transition-colors shadow-sm shadow-spice-500/20"
-            >
-              {t('loginWithGoogle')}
             </button>
           )}
 
@@ -135,6 +132,14 @@ const Navbar = () => {
                 {unreadCount}
               </span>
             )}
+          </Link>
+          <Link
+            to="/my-shares"
+            onClick={() => setMobileMenuOpen(false)}
+            className={`flex items-center gap-2 p-2.5 rounded-lg font-medium text-sm ${isActive('/my-shares') ? 'bg-spice-50 dark:bg-spice-950/20 text-spice-600' : 'text-slate-600 dark:text-slate-300'}`}
+          >
+            <Soup className="w-4 h-4" />
+            <span>Shared Food</span>
           </Link>
           <Link
             to="/profile"
