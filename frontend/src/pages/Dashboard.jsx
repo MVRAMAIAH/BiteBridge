@@ -16,6 +16,7 @@ const Dashboard = () => {
   const [coords, setCoords] = useState({ lat: null, lng: null });
   const [locationDenied, setLocationDenied] = useState(false);
   const [mapOpen, setMapOpen] = useState(true); // default premium map overlay on
+  const [activeRoute, setActiveRoute] = useState(null);
 
   // Leaflet Map Reference
   const mapInstanceRef = useRef(null);
@@ -81,6 +82,25 @@ const Dashboard = () => {
       });
       if (userRes.success) {
         setNearbyUsers(userRes.users);
+      }
+
+      // 3. Fetch outgoing requests to check if there is an accepted active request for navigation route
+      const outRes = await api.requests.getRequests('outgoing');
+      if (outRes.success) {
+        const activeAccepted = outRes.requests.find(
+          r => r.status === 'accepted' && r.foodPostId && r.foodPostId.status === 'reserved'
+        );
+        if (activeAccepted && activeAccepted.foodPostId.location?.coordinates && activeAccepted.foodPostId.location.coordinates[0] !== 0) {
+          const [lng, lat] = activeAccepted.foodPostId.location.coordinates;
+          setActiveRoute({
+            lat,
+            lng,
+            title: activeAccepted.foodPostId.title,
+            cookName: activeAccepted.foodPostId.createdBy?.name || 'Cook'
+          });
+        } else {
+          setActiveRoute(null);
+        }
       }
     } catch (err) {
       console.error('Error fetching dashboard data', err);
@@ -214,13 +234,47 @@ const Dashboard = () => {
           `);
       });
 
+      // 5. Draw active navigation route polyline (green line) if there is an accepted request
+      if (activeRoute) {
+        const routePoints = [
+          [coords.lat, coords.lng], // Start: User coordinates
+          [activeRoute.lat, activeRoute.lng] // End: Cook/Dish coordinates
+        ];
+
+        const routeLine = L.polyline(routePoints, {
+          color: '#10b981', // emerald green
+          weight: 5,
+          opacity: 0.9,
+          dashArray: '8, 12', // dashed navigation line
+          className: 'navigation-route-line'
+        }).addTo(map);
+
+        // Fit map bounds to show the entire navigation path with nice padding
+        map.fitBounds(routeLine.getBounds(), { padding: [60, 60] });
+
+        // Add a floating text label in the middle of the line
+        L.popup({ closeButton: false, autoClose: false, closeOnEscapeKey: false, closeOnClick: false })
+          .setLatLng([
+            (coords.lat + activeRoute.lat) / 2,
+            (coords.lng + activeRoute.lng) / 2
+          ])
+          .setContent(`
+            <div class="text-center font-sans p-1">
+              <span class="text-xs font-extrabold text-emerald-600 dark:text-emerald-500 flex items-center gap-1 justify-center">
+                🗺️ Active Navigation Route to ${activeRoute.cookName}'s Curry: "${activeRoute.title}"
+              </span>
+            </div>
+          `)
+          .openOn(map);
+      }
+
       // Save map instance reference
       mapInstanceRef.current = map;
 
     } catch (e) {
       console.error('Error rendering Leaflet Map:', e);
     }
-  }, [coords, posts, nearbyUsers, mapOpen]);
+  }, [coords, posts, nearbyUsers, mapOpen, activeRoute]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-8">
