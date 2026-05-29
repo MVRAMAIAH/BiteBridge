@@ -503,7 +503,9 @@ const Profile = () => {
                 <p className="text-xs text-slate-400 italic text-center py-8">
                   No share requests received yet. Share some curry to get requests!
                 </p>
-                              {incomingReqs.map((req) => (
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {incomingReqs.map((req) => (
                     <div key={req._id} className="p-5 rounded-3xl border border-slate-150 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/30 flex flex-col gap-4 w-full">
                       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                         <div>
@@ -580,8 +582,6 @@ const Profile = () => {
                         )}
                       </div>
                       {renderProgressTracker(req, true)}
-                    </div>
-                  ))}              )}
                     </div>
                   ))}
                 </div>
