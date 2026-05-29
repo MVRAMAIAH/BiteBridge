@@ -234,25 +234,33 @@ const Dashboard = () => {
           `);
       });
 
-      // 5. Draw active navigation route polyline (green line) if there is an accepted request
+      // 5. Draw active navigation route (street-level turn-by-turn) if there is an accepted request
       if (activeRoute) {
-        const routePoints = [
-          [coords.lat, coords.lng], // Start: User coordinates
-          [activeRoute.lat, activeRoute.lng] // End: Cook/Dish coordinates
-        ];
-
-        const routeLine = L.polyline(routePoints, {
-          color: '#10b981', // emerald green
-          weight: 5,
-          opacity: 0.9,
-          dashArray: '8, 12', // dashed navigation line
-          className: 'navigation-route-line'
+        // Use Leaflet Routing Machine to calculate and draw street navigation
+        const routingControl = L.Routing.control({
+          waypoints: [
+            L.latLng(coords.lat, coords.lng), // User location
+            L.latLng(activeRoute.lat, activeRoute.lng) // Cook location
+          ],
+          routeWhileDragging: false,
+          addWaypoints: false,
+          fitSelectedRoutes: true,
+          showAlternatives: false,
+          lineOptions: {
+            styles: [{ color: '#10b981', opacity: 0.9, weight: 6, className: 'navigation-route-line shadow-lg' }]
+          },
+          createMarker: function() { return null; } // We already have custom markers
         }).addTo(map);
 
-        // Fit map bounds to show the entire navigation path with nice padding
-        map.fitBounds(routeLine.getBounds(), { padding: [60, 60] });
+        // Hide the default routing instructions box (we just want the line)
+        routingControl.on('routesfound', function(e) {
+          const routingContainer = document.querySelector('.leaflet-routing-container');
+          if (routingContainer) {
+            routingContainer.style.display = 'none';
+          }
+        });
 
-        // Add a floating text label in the middle of the line
+        // Add a floating text label in the middle of the line area
         L.popup({ closeButton: false, autoClose: false, closeOnEscapeKey: false, closeOnClick: false })
           .setLatLng([
             (coords.lat + activeRoute.lat) / 2,
@@ -261,7 +269,7 @@ const Dashboard = () => {
           .setContent(`
             <div class="text-center font-sans p-1">
               <span class="text-xs font-extrabold text-emerald-600 dark:text-emerald-500 flex items-center gap-1 justify-center">
-                🗺️ Active Navigation Route to ${activeRoute.cookName}'s Curry: "${activeRoute.title}"
+                🗺️ Street Navigation to ${activeRoute.cookName}'s "${activeRoute.title}"
               </span>
             </div>
           `)

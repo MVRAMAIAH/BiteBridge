@@ -141,11 +141,15 @@ const getFoodPosts = async (req, res) => {
         foodPostId: { $in: postIds },
         requesterId: req.user.id
       });
-      const requestedPostIds = new Set(userRequests.map(r => r.foodPostId.toString()));
+      const userRequestsMap = {};
+      userRequests.forEach(r => {
+        userRequestsMap[r.foodPostId.toString()] = r.toObject();
+      });
 
       const postsWithRequestedField = posts.map(p => {
         const pObj = p.toObject();
-        pObj.hasRequested = requestedPostIds.has(p._id.toString());
+        pObj.hasRequested = !!userRequestsMap[p._id.toString()];
+        pObj.userRequest = userRequestsMap[p._id.toString()] || null;
         return pObj;
       });
 
@@ -175,11 +179,15 @@ const getFoodPosts = async (req, res) => {
       foodPostId: { $in: postIds },
       requesterId: req.user.id
     });
-    const requestedPostIds = new Set(userRequests.map(r => r.foodPostId.toString()));
+    const userRequestsMap = {};
+    userRequests.forEach(r => {
+      userRequestsMap[r.foodPostId.toString()] = r.toObject();
+    });
 
     const postsWithRequestedField = posts.map(p => {
       const pObj = p.toObject();
-      pObj.hasRequested = requestedPostIds.has(p._id.toString());
+      pObj.hasRequested = !!userRequestsMap[p._id.toString()];
+      pObj.userRequest = userRequestsMap[p._id.toString()] || null;
       return pObj;
     });
 

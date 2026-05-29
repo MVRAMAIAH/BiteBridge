@@ -35,6 +35,22 @@ const FeedCard = ({ post, onRequested }) => {
     }
   };
 
+  const handleConfirmHandover = async (action) => {
+    if (!post.userRequest) return;
+    setLoading(true);
+    try {
+      const res = await api.requests.confirmHandover(post.userRequest._id, action);
+      if (res.success) {
+        alert(`Successfully confirmed as ${action}!`);
+        if (onRequested) onRequested(); // refresh feed
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to confirm handover');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleRequestSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -128,9 +144,61 @@ const FeedCard = ({ post, onRequested }) => {
       {!isOwnPost && post.status === 'available' && (
         <div>
           {post.hasRequested ? (
-            <div className="w-full bg-emerald-50 dark:bg-emerald-950/20 text-emerald-605 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30 font-bold py-2.5 rounded-xl text-center text-sm select-none">
-              ✓ Requested (Waiting for Cook)
-            </div>
+            post.userRequest?.status === 'accepted' ? (
+              <div className="mt-2 p-4 rounded-2xl bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-850 flex flex-col gap-3 w-full">
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Handover Status
+                  </span>
+                  <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full ${
+                    post.userRequest.isDeliveredByCook && post.userRequest.isReceivedByBuyer
+                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400' 
+                      : 'bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400'
+                  }`}>
+                    {post.userRequest.isDeliveredByCook && post.userRequest.isReceivedByBuyer
+                      ? 'Exchange Completed 🎉' 
+                      : post.userRequest.isDeliveredByCook 
+                      ? 'Delivered — Waiting for You ⌛' 
+                      : post.userRequest.isReceivedByBuyer 
+                      ? 'Received — Waiting for Cook ⌛' 
+                      : 'Ready for Exchange 🍛'}
+                  </span>
+                </div>
+
+                <div className="w-full h-2 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden border border-slate-200/40 dark:border-slate-800">
+                  <div 
+                    className={`h-full rounded-full transition-all duration-500 ${post.userRequest.isDeliveredByCook && post.userRequest.isReceivedByBuyer ? 'bg-emerald-500' : 'bg-indigo-500'}`} 
+                    style={{ width: `${(post.userRequest.isDeliveredByCook && post.userRequest.isReceivedByBuyer ? 100 : (post.userRequest.isDeliveredByCook || post.userRequest.isReceivedByBuyer ? 66 : 33))}%` }}
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 text-center text-[9px] font-bold text-slate-400 select-none">
+                  <div className="text-emerald-500 dark:text-emerald-400">1. Approved</div>
+                  <div className={post.userRequest.isDeliveredByCook ? 'text-emerald-500 dark:text-emerald-400 font-extrabold' : ''}>2. Handed Over</div>
+                  <div className={post.userRequest.isReceivedByBuyer ? 'text-emerald-500 dark:text-emerald-400 font-extrabold' : ''}>3. Received</div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-slate-100 dark:border-slate-900 justify-between sm:items-center">
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold flex flex-col gap-0.5">
+                    <span>Cook: {post.userRequest.isDeliveredByCook ? '✅ Handed Over' : '⌛ Waiting for Cook to Hand Over'}</span>
+                    <span>Buyer: {post.userRequest.isReceivedByBuyer ? '✅ Confirmed Received' : '❌ Needs Receipt Confirmation'}</span>
+                  </div>
+                  {!post.userRequest.isReceivedByBuyer && (
+                    <button
+                      onClick={() => handleConfirmHandover('received')}
+                      disabled={loading}
+                      className="bg-indigo-500 hover:bg-indigo-600 text-white font-extrabold px-3 py-1.5 rounded-xl text-xs active:scale-95 transition-all shadow-md shadow-indigo-500/10 cursor-pointer disabled:opacity-50"
+                    >
+                      {loading ? 'Confirming...' : 'Confirm Received ✓'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="w-full bg-emerald-50 dark:bg-emerald-950/20 text-emerald-605 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30 font-bold py-2.5 rounded-xl text-center text-sm select-none">
+                {post.userRequest?.status === 'rejected' ? '❌ Request Declined by Cook' : '✓ Requested (Waiting for Cook)'}
+              </div>
+            )
           ) : !showRequestForm ? (
             <button
               onClick={() => setShowRequestForm(true)}
