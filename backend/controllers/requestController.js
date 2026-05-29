@@ -94,9 +94,25 @@ const updateRequestStatus = async (req, res) => {
     request.status = status;
     await request.save();
 
-    // If accepted, reserve the food post
+    // If accepted, reserve or manage the portions of the food post
     if (status === 'accepted') {
-      post.status = 'reserved';
+      const requestedQty = request.quantityRequested || 1;
+      const qtyNumberMatch = post.quantity.match(/\d+/);
+
+      if (qtyNumberMatch) {
+        const currentQty = parseInt(qtyNumberMatch[0], 10);
+        const remainingQty = currentQty - requestedQty;
+
+        if (remainingQty > 0) {
+          post.quantity = post.quantity.replace(/\d+/, remainingQty.toString());
+          post.status = 'available'; // stays available for others!
+        } else {
+          post.quantity = post.quantity.replace(/\d+/, '0');
+          post.status = 'reserved'; // sold out / reserved
+        }
+      } else {
+        post.status = 'reserved';
+      }
       await post.save();
     }
 
